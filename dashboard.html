@@ -599,13 +599,6 @@
           </div>
         </div>
         <div class="stat-card orange">
-          <div class="stat-icon">&#8987;</div>
-          <div class="stat-info">
-            <p>Pending Review</p>
-            <h2 id="pmtAwaitingCount">0</h2>
-          </div>
-        </div>
-        <div class="stat-card blue" style="background:linear-gradient(135deg,#0277bd,#29b6f6);">
           <div class="stat-icon">&#128179;</div>
           <div class="stat-info">
             <p>Submitted</p>
@@ -617,6 +610,13 @@
           <div class="stat-info">
             <p>Confirmed</p>
             <h2 id="pmtPaidCount">0</h2>
+          </div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon">&#10005;</div>
+          <div class="stat-info">
+            <p>Rejected</p>
+            <h2 id="pmtRejectedCount">0</h2>
           </div>
         </div>
       </div>
@@ -633,7 +633,9 @@
                          color:var(--text-main); background:#fff;">
             <option value="">All Statuses</option>
             <option value="submitted">Submitted</option>
+            <option value="pending">Pending</option>
             <option value="confirmed">Confirmed</option>
+            <option value="rejected">Rejected</option>
           </select>
           <button class="btn-secondary btn-sm-text" onclick="clearInvoicePayFilter()">Clear</button>
         </div>
@@ -647,13 +649,14 @@
                 <th>Sender / Bank</th>
                 <th>Amount Paid</th>
                 <th>Transaction Ref</th>
-                <th>Date</th>
+                <th>Payment Date</th>
+                <th>Submitted</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody id="customerInvoicesTable">
-              <tr><td colspan="8" class="empty-row">Loading customer invoices&hellip;</td></tr>
+              <tr><td colspan="9" class="empty-row">Loading customer payments&hellip;</td></tr>
             </tbody>
           </table>
         </div>

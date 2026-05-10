@@ -1246,14 +1246,17 @@ function loadCustomerInvoices() {
     });
 }
 
-// 2. Update the four payment stat cards
+// 2. Update the payment stat cards
 function updatePaymentStats() {
-  var submitted  = allCustomerInvoices.filter(function (i) { return i.paymentStatus === 'submitted'; }).length;
-  var confirmed  = allCustomerInvoices.filter(function (i) { return i.paymentStatus === 'confirmed'; }).length;
-  document.getElementById('pmtTotalCount').textContent     = allCustomerInvoices.length;
-  document.getElementById('pmtAwaitingCount').textContent  = submitted;
+  var submitted = allCustomerInvoices.filter(function (i) {
+    return i.paymentStatus === 'submitted' || i.paymentStatus === 'pending';
+  }).length;
+  var confirmed = allCustomerInvoices.filter(function (i) { return i.paymentStatus === 'confirmed'; }).length;
+  var rejected  = allCustomerInvoices.filter(function (i) { return i.paymentStatus === 'rejected';  }).length;
+  document.getElementById('pmtTotalCount').textContent    = allCustomerInvoices.length;
   document.getElementById('pmtSubmittedCount').textContent = submitted;
-  document.getElementById('pmtPaidCount').textContent      = confirmed;
+  document.getElementById('pmtPaidCount').textContent     = confirmed;
+  document.getElementById('pmtRejectedCount').textContent = rejected;
 }
 
 // 3. Filter payment submissions by search and status
@@ -1290,20 +1293,29 @@ function renderCustomerInvoices(list) {
   if (data.length === 0) {
     var searchVal = (document.getElementById('invoicePaySearch').value || '').trim();
     var msg = searchVal ? 'No matching payments found.' : 'No payment submissions yet.';
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-row">' + msg + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-row">' + msg + '</td></tr>';
     return;
   }
 
   tbody.innerHTML = data.map(function (pmt) {
-    var date = pmt.createdAt
+    var submittedDate = pmt.createdAt
       ? pmt.createdAt.toDate().toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })
       : '–';
 
-    var isConfirmed = pmt.paymentStatus === 'confirmed';
+    var status = pmt.paymentStatus || 'submitted';
 
-    var actions = !isConfirmed
-      ? '<button class="btn-sm btn-edit" onclick="confirmPayment(\'' + pmt.id + '\')">Confirm Payment</button>'
-      : '<span style="color:var(--success);font-size:0.82rem;font-weight:600;">&#10003; Confirmed</span>';
+    var actions = '';
+    if (status === 'submitted' || status === 'pending') {
+      actions =
+        '<button class="btn-sm btn-edit" onclick="updatePaymentStatus(\'' + pmt.id + '\',\'confirmed\')" style="margin-right:4px;">&#10003; Confirm</button>' +
+        '<button class="btn-sm btn-danger-sm" onclick="updatePaymentStatus(\'' + pmt.id + '\',\'rejected\')">&#10005; Reject</button>';
+    } else if (status === 'confirmed') {
+      actions = '<button class="btn-sm btn-secondary-sm" onclick="updatePaymentStatus(\'' + pmt.id + '\',\'pending\')">&#8635; Revert</button>';
+    } else if (status === 'rejected') {
+      actions =
+        '<button class="btn-sm btn-edit" onclick="updatePaymentStatus(\'' + pmt.id + '\',\'confirmed\')" style="margin-right:4px;">&#10003; Confirm</button>' +
+        '<button class="btn-sm btn-secondary-sm" onclick="updatePaymentStatus(\'' + pmt.id + '\',\'pending\')">&#8635; Revert</button>';
+    }
 
     return '<tr>' +
       '<td><strong>' + escHtml(pmt.invoiceNumber || '–') + '</strong></td>' +
@@ -1311,37 +1323,58 @@ function renderCustomerInvoices(list) {
       '<td>' + escHtml(pmt.senderName || '–') + '<br><small style="color:var(--text-muted);">' + escHtml(pmt.bankName || '') + '</small></td>' +
       '<td class="amount">&#8358;' + fmtAdmin(pmt.amountPaid) + '</td>' +
       '<td>' + escHtml(pmt.transactionReference || '–') + '</td>' +
-      '<td>' + date + '</td>' +
-      '<td>' + adminPaymentBadge(pmt.paymentStatus) + '</td>' +
+      '<td>' + escHtml(pmt.paymentDate || '–') + '</td>' +
+      '<td>' + submittedDate + '</td>' +
+      '<td>' + adminPaymentBadge(status) + '</td>' +
       '<td>' + actions + '</td>' +
     '</tr>';
   }).join('');
 }
 
-// 6. Admin: confirm a customer payment submission
-async function confirmPayment(id) {
+// 6. Admin: update payment status (pending / confirmed / rejected)
+async function updatePaymentStatus(id, newStatus) {
   var pmt   = allCustomerInvoices.find(function (i) { return i.id === id; });
-  var invNo = pmt ? pmt.invoiceNumber : id;
-  if (!confirm('Confirm payment for invoice ' + invNo + '?\n\nThis marks the payment as received and notifies the customer.')) return;
+  var invNo = pmt ? (pmt.invoiceNumber || id) : id;
+
+  var labels = { pending: 'Pending', confirmed: 'Confirmed', rejected: 'Rejected' };
+  var label  = labels[newStatus] || newStatus;
+
+  // Map payment status → invoice status shown to the customer
+  var invoiceStatusMap = {
+    pending:   'Receipt Submitted',
+    confirmed: 'Payment Confirmed',
+    rejected:  'Payment Rejected',
+  };
+
+  if (!confirm('Mark payment for invoice ' + invNo + ' as ' + label + '?')) return;
+
   try {
-    // Mark the payment record as confirmed
-    await db.collection('payments').doc(id).update({
-      paymentStatus: 'confirmed',
-      confirmedAt:   firebase.firestore.FieldValue.serverTimestamp(),
-    });
-    // Also update the linked invoice so customer sees Payment Confirmed
+    var pmtUpdate = {
+      paymentStatus: newStatus,
+      updatedAt:     firebase.firestore.FieldValue.serverTimestamp(),
+    };
+    if (newStatus === 'confirmed') pmtUpdate.confirmedAt = firebase.firestore.FieldValue.serverTimestamp();
+    if (newStatus === 'rejected')  pmtUpdate.rejectedAt  = firebase.firestore.FieldValue.serverTimestamp();
+
+    await db.collection('payments').doc(id).update(pmtUpdate);
+
     if (pmt && pmt.invoiceId) {
       await db.collection('invoices').doc(pmt.invoiceId).update({
-        paymentStatus: 'Payment Confirmed',
-        confirmedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+        paymentStatus: invoiceStatusMap[newStatus] || 'Awaiting Payment',
+        updatedAt:     firebase.firestore.FieldValue.serverTimestamp(),
       });
     }
-    showToast('Payment confirmed for invoice ' + invNo + '. Customer notified.', 'success');
+
+    var toastType = newStatus === 'rejected' ? 'error' : 'success';
+    showToast('Payment for invoice ' + invNo + ' marked as ' + label + '.', toastType);
   } catch (err) {
-    console.error('[confirmPayment] Error:', err.code, err.message);
-    showToast('Failed to confirm payment. Please try again.', 'error');
+    console.error('[updatePaymentStatus] Error:', err.code, err.message);
+    showToast('Failed to update payment status. Please try again.', 'error');
   }
 }
+
+// Legacy alias
+function confirmPayment(id) { updatePaymentStatus(id, 'confirmed'); }
 
 // 7. Admin: view full details of a payment submission
 function viewReceiptSubmission(id) {
@@ -1369,11 +1402,14 @@ function viewPaymentProof(id) { viewReceiptSubmission(id); }
 // 8. Payment badge for admin table
 function adminPaymentBadge(status) {
   if (status === 'submitted')         return '<span class="order-badge badge-approved">&#128179; Submitted</span>';
+  if (status === 'pending')           return '<span class="order-badge badge-pending">&#8987; Pending</span>';
   if (status === 'confirmed')         return '<span class="order-badge badge-delivered">&#10003; Confirmed</span>';
+  if (status === 'rejected')          return '<span class="order-badge badge-rejected">&#10005; Rejected</span>';
   // Legacy statuses (backward compat for old data)
   if (status === 'Awaiting Payment')  return '<span class="order-badge badge-pending">&#8987; Awaiting</span>';
   if (status === 'Receipt Submitted') return '<span class="order-badge badge-approved">&#128179; Submitted</span>';
   if (status === 'Payment Confirmed') return '<span class="order-badge badge-delivered">&#10003; Confirmed</span>';
+  if (status === 'Payment Rejected')  return '<span class="order-badge badge-rejected">&#10005; Rejected</span>';
   if (status === 'Payment Submitted') return '<span class="order-badge badge-approved">&#128179; Submitted</span>';
   if (status === 'Paid')              return '<span class="order-badge badge-delivered">&#10003; Confirmed</span>';
   return '<span class="order-badge badge-pending">' + escHtml(status || '–') + '</span>';

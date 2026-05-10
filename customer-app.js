@@ -693,8 +693,9 @@ function closeInvoiceModal() {
 // 8. Return a coloured payment status badge HTML string
 function paymentStatusBadge(status) {
   if (status === 'Awaiting Payment')  return '<span class="payment-badge payment-awaiting">&#8987; Awaiting Payment</span>';
-  if (status === 'Receipt Submitted') return '<span class="payment-badge payment-submitted">&#128172; Receipt Submitted</span>';
+  if (status === 'Receipt Submitted') return '<span class="payment-badge payment-submitted">&#128179; Receipt Submitted</span>';
   if (status === 'Payment Confirmed') return '<span class="payment-badge payment-paid">&#10003; Payment Confirmed</span>';
+  if (status === 'Payment Rejected')  return '<span class="payment-badge payment-rejected">&#10005; Payment Rejected</span>';
   return '<span class="payment-badge payment-awaiting">' + safeText(status || 'Awaiting Payment') + '</span>';
 }
 
@@ -702,6 +703,9 @@ function paymentStatusBadge(status) {
 function buildInvoiceViewHTML(inv) {
   var isConfirmed   = inv.paymentStatus === 'Payment Confirmed';
   var isReceiptSent = inv.paymentStatus === 'Receipt Submitted';
+  var isRejected    = inv.paymentStatus === 'Payment Rejected';
+
+  var todayStr = new Date().toISOString().split('T')[0];
 
   var date = inv.createdAt
     ? inv.createdAt.toDate().toLocaleDateString('en-NG', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -717,12 +721,22 @@ function buildInvoiceViewHTML(inv) {
       '</div>'
     : '';
 
+  var rejectedBanner = isRejected
+    ? '<div style="background:#ffebee;border:1.5px solid #ef9a9a;border-radius:8px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">' +
+        '<span style="font-size:1.4rem;">&#10005;</span>' +
+        '<div>' +
+          '<div style="font-weight:700;color:#c62828;font-size:0.875rem;">Payment Rejected</div>' +
+          '<div style="color:#b71c1c;font-size:0.8rem;margin-top:2px;">Your payment details could not be verified. Please resubmit with correct information.</div>' +
+        '</div>' +
+      '</div>'
+    : '';
+
   var receiptSentBanner = isReceiptSent
     ? '<div style="background:#e3f2fd;border:1.5px solid #90caf9;border-radius:8px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">' +
-        '<span style="font-size:1.4rem;">&#128172;</span>' +
+        '<span style="font-size:1.4rem;">&#128179;</span>' +
         '<div>' +
-          '<div style="font-weight:700;color:#1565c0;font-size:0.875rem;">Receipt Sent via WhatsApp</div>' +
-          '<div style="color:#1976d2;font-size:0.8rem;margin-top:2px;">Admin is reviewing your payment. You can resend if needed.</div>' +
+          '<div style="font-weight:700;color:#1565c0;font-size:0.875rem;">Payment Submitted</div>' +
+          '<div style="color:#1976d2;font-size:0.8rem;margin-top:2px;">Your payment details are under review. We will notify you once confirmed.</div>' +
         '</div>' +
       '</div>'
     : '';
@@ -752,9 +766,12 @@ function buildInvoiceViewHTML(inv) {
       '</div>'
     : '';
 
+  var submitBtnLabel = isRejected ? '&#8635; Resubmit Payment Details' : '&#10003; Submit Payment Details';
+
   var whatsappSection = !isConfirmed
     ? '<div class="payment-confirm-section">' +
-        '<h4>&#128179; Confirm Your Payment</h4>' +
+        '<h4>&#128179; ' + (isRejected ? 'Resubmit Payment Details' : 'Confirm Your Payment') + '</h4>' +
+        rejectedBanner +
         receiptSentBanner +
         '<p style="font-size:0.875rem;color:var(--text-muted);margin-bottom:16px;line-height:1.65;">' +
           'After transferring payment to the account above, fill in your payment details below. ' +
@@ -775,14 +792,19 @@ function buildInvoiceViewHTML(inv) {
           '<input type="number" id="payFormAmount" placeholder="0.00" min="0" step="0.01" ' +
                  'style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:0.875rem;box-sizing:border-box;" />' +
         '</div>' +
-        '<div style="margin-bottom:16px;">' +
+        '<div style="margin-bottom:12px;">' +
           '<label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:5px;">Transaction Reference *</label>' +
           '<input type="text" id="payFormReference" placeholder="From your bank alert or SMS" ' +
                  'style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:0.875rem;box-sizing:border-box;" />' +
         '</div>' +
+        '<div style="margin-bottom:16px;">' +
+          '<label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:5px;">Payment Date *</label>' +
+          '<input type="date" id="payFormDate" value="' + todayStr + '" max="' + todayStr + '" ' +
+                 'style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:0.875rem;box-sizing:border-box;" />' +
+        '</div>' +
         '<div id="payFormMsg" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:0.875rem;"></div>' +
         '<button class="btn-primary" id="payFormSubmitBtn" onclick="submitPaymentForm()" ' +
-                'style="width:100%;padding:12px;font-size:0.95rem;">&#10003; Submit Payment Details</button>' +
+                'style="width:100%;padding:12px;font-size:0.95rem;">' + submitBtnLabel + '</button>' +
         '<p style="font-size:0.78rem;color:var(--text-muted);margin-top:12px;text-align:center;line-height:1.55;">' +
           '&#128204; <em>You can also send your receipt on ' +
           '<a href="#" onclick="sendReceiptWhatsApp();return false;" ' +
@@ -922,18 +944,20 @@ async function submitPaymentForm() {
   var bankNameEl   = document.getElementById('payFormBankName');
   var amountEl     = document.getElementById('payFormAmount');
   var referenceEl  = document.getElementById('payFormReference');
+  var dateEl       = document.getElementById('payFormDate');
   var msgDiv       = document.getElementById('payFormMsg');
   var btn          = document.getElementById('payFormSubmitBtn');
 
   if (!senderNameEl || !bankNameEl || !amountEl || !referenceEl || !btn) return;
 
-  var senderName = senderNameEl.value.trim();
-  var bankName   = bankNameEl.value.trim();
-  var amountPaid = parseFloat(amountEl.value) || 0;
-  var reference  = referenceEl.value.trim();
+  var senderName  = senderNameEl.value.trim();
+  var bankName    = bankNameEl.value.trim();
+  var amountPaid  = parseFloat(amountEl.value) || 0;
+  var reference   = referenceEl.value.trim();
+  var paymentDate = dateEl ? dateEl.value : '';
 
-  if (!senderName || !bankName || !reference || amountPaid <= 0) {
-    msgDiv.textContent = 'Please fill in all required fields.';
+  if (!senderName || !bankName || !reference || !paymentDate || amountPaid <= 0) {
+    msgDiv.textContent = 'Please fill in all required fields including the payment date.';
     msgDiv.style.cssText = 'display:block;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;padding:10px 14px;border-radius:8px;font-size:0.875rem;margin-bottom:12px;';
     return;
   }
@@ -950,6 +974,7 @@ async function submitPaymentForm() {
       bankName:             bankName,
       amountPaid:           amountPaid,
       transactionReference: reference,
+      paymentDate:          paymentDate,
       invoiceNumber:        inv.invoiceNumber || '',
       invoiceId:            inv.id,
       customerEmail:        inv.customerEmail || '',
@@ -965,7 +990,7 @@ async function submitPaymentForm() {
     });
 
     success = true;
-    msgDiv.textContent = 'Payment submitted successfully';
+    msgDiv.textContent = 'Payment submitted successfully. Admin will review and confirm shortly.';
     msgDiv.style.cssText = 'display:block;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;padding:10px 14px;border-radius:8px;font-size:0.875rem;margin-bottom:12px;';
     btn.textContent      = '✔ Submitted';
     btn.style.background = '#2e7d32';

@@ -560,6 +560,8 @@ textarea { resize: vertical; }
 .btn-edit:hover { background: #0d47a1; }
 .btn-danger-sm { background: var(--danger); color: #fff; }
 .btn-danger-sm:hover { background: #b71c1c; }
+.btn-secondary-sm { background: #e8edf4; color: #2d3a4a; border: 1px solid #c8d4e0; }
+.btn-secondary-sm:hover { background: #d0dae6; }
 
 .btn-sm-text {
   padding: 9px 18px;
@@ -968,6 +970,7 @@ textarea { resize: vertical; }
 .payment-awaiting  { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
 .payment-submitted { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
 .payment-paid      { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+.payment-rejected  { background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; }
 
 /* ── Invoice modal override ─────────────────────────────────── */
 .modal-invoice {
@@ -1469,6 +1472,7 @@ a.support-item-value:hover {
 .badge-pending   { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
 .badge-approved  { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
 .badge-delivered { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+.badge-rejected  { background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; }
 
 /* ── Card inline search (dashboard recent invoices) ───────────── */
 .card-search-input {
