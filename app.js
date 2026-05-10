@@ -274,7 +274,7 @@ document.getElementById('invoiceForm').addEventListener('submit', async function
   });
 
   if (!valid || items.length === 0) {
-    alert('Please select a product and enter valid quantity / price for every item.');
+    showToast('Please select a product and enter a valid quantity and price for every item.', 'error');
     return;
   }
 
@@ -285,12 +285,12 @@ document.getElementById('invoiceForm').addEventListener('submit', async function
   const invoiceDate   = document.getElementById('invoiceDate').value;
 
   if (!invoiceNumber || !customerName || !invoiceDate) {
-    alert('Invoice number, customer name, and date are required.');
+    showToast('Invoice number, customer name, and date are required.', 'error');
     return;
   }
 
   if (grandTotal <= 0) {
-    alert('Invoice total must be greater than zero.');
+    showToast('Invoice total must be greater than zero.', 'error');
     return;
   }
 
@@ -312,11 +312,11 @@ document.getElementById('invoiceForm').addEventListener('submit', async function
 
   try {
     await db.collection('invoices').add(data);
-    alert('Invoice ' + data.invoiceNumber + ' saved successfully!');
+    showToast('Invoice ' + data.invoiceNumber + ' saved successfully!', 'success');
     resetInvoiceForm();
   } catch (err) {
     console.error('Save invoice error:', err);
-    alert('Failed to save invoice. Please check your internet connection and try again.');
+    showToast('Failed to save invoice. Please check your connection and try again.', 'error');
   } finally {
     btn.textContent = '💾 Save Invoice';
     btn.disabled    = false;
@@ -541,7 +541,7 @@ function viewInvoice(id) {
         <div class="company-block">
           <img src="assets/images/logo.png" alt="Sage Energies" class="invoice-logo-img" style="height:44px;max-width:190px;object-fit:contain;display:block;margin-bottom:4px;" />
           <p>and Natural Resources Ltd</p>
-          <p>info@sageenergy.com &nbsp;|&nbsp; +234 000 000 0000</p>
+          <p>+234 815 411 4232 &nbsp;|&nbsp; Benin City, Edo State</p>
         </div>
         <div class="invoice-meta-block">
           <h3 class="inv-label">INVOICE</h3>
@@ -600,10 +600,10 @@ async function deleteInvoice(id, invNum) {
   if (!confirm('Delete invoice ' + invNum + '? This action cannot be undone.')) return;
   try {
     await db.collection('invoices').doc(id).delete();
-    alert('Invoice deleted.');
+    showToast('Invoice deleted.', 'success');
   } catch (err) {
     console.error('Delete invoice error:', err);
-    alert('Failed to delete invoice.');
+    showToast('Failed to delete invoice. Please try again.', 'error');
   }
 }
 
@@ -710,7 +710,7 @@ function buildPDF(inv) {
   doc.setFontSize(9);
   doc.setFont(undefined, 'normal');
   doc.text('and Natural Resources Ltd', 14, 23);
-  doc.text('info@sageenergy.com  |  +234 000 000 0000', 14, 30);
+  doc.text('+234 815 411 4232  |  Benin City, Edo State, Nigeria', 14, 30);
 
   doc.setFontSize(18);
   doc.setFont(undefined, 'bold');
@@ -930,16 +930,16 @@ document.getElementById('productForm').addEventListener('submit', async function
   try {
     if (editProductId) {
       await db.collection('products').doc(editProductId).update(data);
-      alert('Product updated successfully!');
+      showToast('Product updated successfully!', 'success');
     } else {
       data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection('products').add(data);
-      alert('Product added successfully!');
+      showToast('Product added successfully!', 'success');
     }
     closeProductModal();
   } catch (err) {
     console.error('Save product error:', err);
-    alert('Failed to save product. Please try again.');
+    showToast('Failed to save product. Please try again.', 'error');
   } finally {
     btn.textContent = editProductId ? 'Update Product' : 'Save Product';
     btn.disabled    = false;
@@ -950,10 +950,10 @@ async function deleteProduct(id, name) {
   if (!confirm('Delete product "' + name + '"? This cannot be undone.')) return;
   try {
     await db.collection('products').doc(id).delete();
-    alert('Product deleted.');
+    showToast('Product deleted.', 'success');
   } catch (err) {
     console.error('Delete product error:', err);
-    alert('Failed to delete product.');
+    showToast('Failed to delete product. Please try again.', 'error');
   }
 }
 
@@ -1181,10 +1181,10 @@ async function approveOrder(id) {
       status:    'Approved',
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
-    alert('Order approved successfully. The customer will be notified.');
+    showToast('Order approved successfully.', 'success');
   } catch (err) {
     console.error('Approve order error:', err);
-    alert('Failed to approve order. Please try again.');
+    showToast('Failed to approve order. Please try again.', 'error');
   }
 }
 
@@ -1196,10 +1196,10 @@ async function deliverOrder(id) {
       status:    'Delivered',
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
-    alert('Order marked as delivered.');
+    showToast('Order marked as delivered.', 'success');
   } catch (err) {
     console.error('Deliver order error:', err);
-    alert('Failed to update order. Please try again.');
+    showToast('Failed to update order. Please try again.', 'error');
   }
 }
 
@@ -1208,10 +1208,10 @@ async function deleteOrder(id, orderNum) {
   if (!confirm('Delete order ' + orderNum + '? This cannot be undone.')) return;
   try {
     await db.collection('orders').doc(id).delete();
-    alert('Order deleted.');
+    showToast('Order deleted.', 'success');
   } catch (err) {
     console.error('Delete order error:', err);
-    alert('Failed to delete order. Please try again.');
+    showToast('Failed to delete order. Please try again.', 'error');
   }
 }
 
@@ -1336,10 +1336,10 @@ async function confirmPayment(id) {
         confirmedAt:   firebase.firestore.FieldValue.serverTimestamp(),
       });
     }
-    alert('Payment confirmed for invoice ' + invNo + '.\nThe customer will now see "Payment Confirmed" on their invoice.');
+    showToast('Payment confirmed for invoice ' + invNo + '. Customer notified.', 'success');
   } catch (err) {
     console.error('[confirmPayment] Error:', err.code, err.message);
-    alert('Failed to confirm payment. Please try again.');
+    showToast('Failed to confirm payment. Please try again.', 'error');
   }
 }
 
@@ -1353,18 +1353,12 @@ function viewReceiptSubmission(id) {
     submittedAt = pmt.createdAt.toDate().toLocaleString('en-NG');
   }
 
-  alert(
-    'Payment Submission Details\n' +
-    '──────────────────────────────\n' +
-    'Invoice:     ' + (pmt.invoiceNumber        || '–') + '\n' +
-    'Customer:    ' + (pmt.customerName          || '–') + '\n' +
-    'Email:       ' + (pmt.customerEmail         || '–') + '\n' +
-    'Sender Name: ' + (pmt.senderName            || '–') + '\n' +
-    'Bank:        ' + (pmt.bankName              || '–') + '\n' +
-    'Amount Paid: ₦' + fmtAdmin(pmt.amountPaid)          + '\n' +
-    'Reference:   ' + (pmt.transactionReference  || '–') + '\n' +
-    'Submitted:   ' + submittedAt                        + '\n' +
-    'Status:      ' + (pmt.paymentStatus          || '–')
+  showToast(
+    '<strong>' + escHtml(pmt.invoiceNumber || '–') + '</strong> &nbsp;&mdash;&nbsp; ' + escHtml(pmt.customerName || '–') + '<br>' +
+    'Sender: ' + escHtml(pmt.senderName || '–') + ' &nbsp;|&nbsp; Bank: ' + escHtml(pmt.bankName || '–') + '<br>' +
+    'Amount: &#8358;' + fmtAdmin(pmt.amountPaid) + ' &nbsp;|&nbsp; Ref: ' + escHtml(pmt.transactionReference || '–') + '<br>' +
+    'Submitted: ' + escHtml(submittedAt),
+    'info'
   );
 }
 
@@ -1391,4 +1385,19 @@ function fmtAdmin(num) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+// ============================================================
+// TOAST NOTIFICATIONS
+// ============================================================
+function showToast(message, type) {
+  var container = document.getElementById('toastContainer');
+  if (!container) return;
+  var icons = { success: '&#10003;', error: '&#10005;', info: 'i' };
+  var t = type || 'info';
+  var toast = document.createElement('div');
+  toast.className = 'toast toast-' + t;
+  toast.innerHTML = '<span class="toast-icon">' + (icons[t] || icons.info) + '</span><span>' + message + '</span>';
+  container.appendChild(toast);
+  setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 4100);
 }

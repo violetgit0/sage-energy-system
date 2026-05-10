@@ -3,13 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sage Energy – Dashboard</title>
+  <title>Sage Energy – Admin Dashboard</title>
+  <meta name="description" content="Sage Energy and Natural Resources Ltd – Admin dashboard for managing invoices, inventory, customer orders and payments." />
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="assets/images/logo.png" type="image/png" />
   <!-- jsPDF: used for PDF invoice downloads -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body class="dashboard-page">
+
+  <!-- Toast notification container -->
+  <div id="toastContainer" class="toast-container"></div>
 
   <!-- ============================================================
        SIDEBAR NAVIGATION
@@ -273,8 +277,8 @@
               <div class="company-block">
                 <img src="assets/images/logo.png" alt="Sage Energies" class="invoice-logo-img" />
                 <p>and Natural Resources Ltd</p>
-                <p>info@sageenergy.com</p>
-                <p>+234 000 000 0000</p>
+                <p>+234 815 411 4232</p>
+                <p>Benin City, Edo State, Nigeria</p>
               </div>
               <div class="invoice-meta-block">
                 <h3 class="inv-label">INVOICE</h3>

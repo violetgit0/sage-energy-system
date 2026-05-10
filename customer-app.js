@@ -211,7 +211,7 @@ document.getElementById('orderForm').addEventListener('submit', async function (
     var invNumber = generateInvoiceNumber();
     await createOrderInvoice(docRef.id, orderData, invNumber);
     console.log('[Invoice] Auto-created:', invNumber);
-    alert('Order submitted!\nInvoice ' + invNumber + ' has been generated.\nGo to "My Invoices" to view payment details.');
+    showToast('Order submitted! Invoice ' + invNumber + ' generated — check My Invoices.', 'success');
     resetOrderForm();
     showCustomerSection('my-invoices');
   } catch (err) {
@@ -997,10 +997,25 @@ function fallbackCopy(text) {
 
 // ── Payment form removed – customers now use WhatsApp to send receipt ──
 
+// ============================================================
+// TOAST NOTIFICATIONS
+// ============================================================
+function showToast(message, type) {
+  var container = document.getElementById('toastContainer');
+  if (!container) return;
+  var icons = { success: '&#10003;', error: '&#10005;', info: 'i' };
+  var t = type || 'info';
+  var toast = document.createElement('div');
+  toast.className = 'toast toast-' + t;
+  toast.innerHTML = '<span class="toast-icon">' + (icons[t] || icons.info) + '</span><span>' + message + '</span>';
+  container.appendChild(toast);
+  setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 4100);
+}
+
 // 13. Download / print invoice as a standalone HTML page
 function downloadInvoicePDF() {
   if (!currentViewInvoice) {
-    alert('No invoice loaded.');
+    showToast('No invoice loaded. Please open an invoice first.', 'error');
     return;
   }
   var inv  = currentViewInvoice;
@@ -1075,7 +1090,7 @@ function downloadInvoicePDF() {
 
   var win = window.open('', '_blank');
   if (!win) {
-    alert('Popup blocked. Please allow popups for this site and try again.');
+    showToast('Popup blocked. Please allow popups for this site and try again.', 'error');
     return;
   }
   win.document.write(html);

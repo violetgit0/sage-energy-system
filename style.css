@@ -1577,6 +1577,48 @@ a.support-item-value:hover {
 .estimated-total-label  { font-size: 0.875rem; color: #1565c0; font-weight: 600; }
 .estimated-total-amount { font-size: 1.25rem; font-weight: 800; color: #1565c0; }
 
+/* ── Toast Notifications ──────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+  max-width: 440px;
+  width: calc(100vw - 32px);
+}
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 13px 16px;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.14);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.5;
+  pointer-events: auto;
+  animation: toastSlideIn 0.28s ease, toastFadeOut 0.4s ease 3.7s forwards;
+}
+.toast-success { background: #e8f5e9; color: #1b5e20; border: 1.5px solid #a5d6a7; }
+.toast-error   { background: #ffebee; color: #b71c1c; border: 1.5px solid #ef9a9a; }
+.toast-info    { background: #e3f2fd; color: #0d47a1; border: 1.5px solid #90caf9; }
+.toast-icon    { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(50px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toastFadeOut {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(50px); }
+}
+@media (max-width: 600px) {
+  .toast-container { bottom: 16px; right: 12px; left: 12px; width: auto; max-width: 100%; }
+}
+
 /* ── Read-only price field ────────────────────────────────── */
 .input-price-readonly {
   background: #f0f7ff !important;
