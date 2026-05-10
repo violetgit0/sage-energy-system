@@ -1,0 +1,16 @@
+{
+  "hosting": {
+    "site": "sage-energy-system",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "firestore.rules",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": []
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

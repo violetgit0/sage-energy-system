@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sage Energy &ndash; Login</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="assets/images/logo.png" type="image/png" />
+</head>
+<body class="login-page">
+
+  <div class="login-container">
+    <div class="login-card">
+
+      <!-- Logo / Branding -->
+      <div class="login-logo">
+        <img src="assets/images/logo.png" alt="Sage Energies" class="login-logo-img" />
+        <p>and Natural Resources Ltd</p>
+      </div>
+
+      <!-- Admin Login Form -->
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" placeholder="admin@sageenergy.com"
+                 required autocomplete="email" />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Enter your password"
+                 required autocomplete="current-password" />
+        </div>
+
+        <!-- Error message (hidden until needed) -->
+        <div id="loginError" class="error-msg" style="display:none;"></div>
+
+        <button type="submit" class="btn-login" id="loginBtn">
+          <span id="loginText">Sign In</span>
+          <span id="loginSpinner" style="display:none;">Signing in&hellip;</span>
+        </button>
+      </form>
+
+      <!-- Link to customer portal -->
+      <div style="text-align:center; margin-top:22px; padding-top:18px;
+                  border-top:1px solid #e0e7ef;">
+        <p style="font-size:0.82rem; color:#5a6a7a; margin-bottom:8px;">
+          Are you a customer?
+        </p>
+        <a href="customer-login.html"
+           style="display:inline-block; padding:9px 24px;
+                  background:#f0f4f8; color:#0d2137;
+                  border:1.5px solid #d0dae6; border-radius:8px;
+                  font-size:0.875rem; font-weight:600;
+                  text-decoration:none; transition:background 0.2s;"
+           onmouseover="this.style.background='#1e88e5';this.style.color='#fff';this.style.borderColor='#1e88e5';"
+           onmouseout="this.style.background='#f0f4f8';this.style.color='#0d2137';this.style.borderColor='#d0dae6';">
+          &#9889; Customer Portal &rarr;
+        </a>
+      </div>
+
+      <p class="login-footer">&copy; 2024 Sage Energy and Natural Resources Ltd</p>
+    </div>
+  </div>
+
+  <!-- Firebase CDN -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+
+  <script>
+    // If already logged in, route to the correct dashboard automatically
+    firebase.auth().onAuthStateChanged(async function (user) {
+      if (!user) return; // not logged in – stay on this page
+
+      // Check if this is a customer account
+      var doc = await db.collection('customers').doc(user.uid).get();
+      if (doc.exists) {
+        window.location.href = 'customer-dashboard.html';
+      } else {
+        window.location.href = 'dashboard.html';
+      }
+    });
+
+    // Handle sign-in form submission
+    document.getElementById('loginForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      var email    = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
+      var errorDiv = document.getElementById('loginError');
+
+      document.getElementById('loginText').style.display    = 'none';
+      document.getElementById('loginSpinner').style.display = 'inline';
+      errorDiv.style.display = 'none';
+
+      try {
+        var credential = await firebase.auth().signInWithEmailAndPassword(email, password);
+
+        // Route to the correct dashboard based on account type
+        var doc = await db.collection('customers').doc(credential.user.uid).get();
+        if (doc.exists) {
+          window.location.href = 'customer-dashboard.html';
+        } else {
+          window.location.href = 'dashboard.html';
+        }
+
+      } catch (err) {
+        var messages = {
+          'auth/wrong-password'      : 'Incorrect password. Please try again.',
+          'auth/user-not-found'      : 'No account found with this email address.',
+          'auth/invalid-email'       : 'Please enter a valid email address.',
+          'auth/too-many-requests'   : 'Too many failed attempts. Please wait and try again.',
+          'auth/invalid-credential'  : 'Invalid email or password. Please try again.',
+        };
+        errorDiv.textContent   = messages[err.code] || 'Login failed. Please check your details.';
+        errorDiv.style.display = 'block';
+      } finally {
+        document.getElementById('loginText').style.display    = 'inline';
+        document.getElementById('loginSpinner').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

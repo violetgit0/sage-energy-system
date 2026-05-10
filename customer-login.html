@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sage Energy &ndash; Customer Login</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="assets/images/logo.png" type="image/png" />
+</head>
+<body class="login-page">
+
+  <div class="login-container">
+    <div class="login-card">
+
+      <div class="login-logo">
+        <img src="assets/images/logo.png" alt="Sage Energies" class="login-logo-img" />
+        <p>Customer Portal &ndash; Sign In</p>
+      </div>
+
+      <form id="customerLoginForm">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" placeholder="you@example.com"
+                 required autocomplete="email" />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Enter your password"
+                 required autocomplete="current-password" />
+        </div>
+
+        <div id="loginError" class="error-msg" style="display:none;"></div>
+
+        <button type="submit" class="btn-login" id="loginBtn">
+          <span id="loginText">Sign In</span>
+          <span id="loginSpinner" style="display:none;">Signing in&hellip;</span>
+        </button>
+      </form>
+
+      <p style="text-align:center; margin-top:22px; font-size:0.875rem; color:#5a6a7a;">
+        New customer?
+        <a href="customer-register.html"
+           style="color:#1e88e5; font-weight:700;">Create an account</a>
+      </p>
+
+      <p class="login-footer">&copy; 2024 Sage Energy and Natural Resources Ltd</p>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+
+  <script>
+    // If already logged in as a customer, go straight to dashboard
+    firebase.auth().onAuthStateChanged(async function (user) {
+      if (user) {
+        var doc = await db.collection('customers').doc(user.uid).get();
+        if (doc.exists) {
+          window.location.href = 'customer-dashboard.html';
+        }
+      }
+    });
+
+    document.getElementById('customerLoginForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      var email    = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
+      var errorDiv = document.getElementById('loginError');
+
+      document.getElementById('loginText').style.display    = 'none';
+      document.getElementById('loginSpinner').style.display = 'inline';
+      errorDiv.style.display = 'none';
+
+      try {
+        var credential = await firebase.auth().signInWithEmailAndPassword(email, password);
+
+        // Make sure this is a customer account, not an admin
+        var doc = await db.collection('customers').doc(credential.user.uid).get();
+        if (!doc.exists) {
+          await firebase.auth().signOut();
+          errorDiv.textContent  = 'No customer account found for this email. Please register or use the admin login.';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        window.location.href = 'customer-dashboard.html';
+
+      } catch (err) {
+        var messages = {
+          'auth/wrong-password'      : 'Incorrect password. Please try again.',
+          'auth/user-not-found'      : 'No account found with this email.',
+          'auth/invalid-email'       : 'Please enter a valid email address.',
+          'auth/too-many-requests'   : 'Too many failed attempts. Please wait and try again.',
+          'auth/invalid-credential'  : 'Invalid email or password.',
+        };
+        errorDiv.textContent  = messages[err.code] || 'Login failed. Please try again.';
+        errorDiv.style.display = 'block';
+      } finally {
+        document.getElementById('loginText').style.display    = 'inline';
+        document.getElementById('loginSpinner').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

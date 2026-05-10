@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sage Energy &ndash; Customer Portal</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="assets/images/logo.png" type="image/png" />
+</head>
+<body class="dashboard-page">
+
+  <!-- ============================================================
+       SIDEBAR NAVIGATION
+  ============================================================ -->
+  <aside class="sidebar" id="sidebar">
+
+    <div class="sidebar-logo">
+      <img src="assets/images/logo.png" alt="Sage Energies" class="sidebar-logo-img" />
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-section="place-order">
+        <span class="nav-icon">&#128722;</span>
+        <span>Place Order</span>
+      </a>
+      <a href="#" class="nav-item" data-section="my-orders">
+        <span class="nav-icon">&#128203;</span>
+        <span>My Orders</span>
+      </a>
+      <a href="#" class="nav-item" data-section="my-invoices">
+        <span class="nav-icon">&#128196;</span>
+        <span>My Invoices</span>
+      </a>
+      <a href="#" class="nav-item" data-section="profile">
+        <span class="nav-icon">&#128100;</span>
+        <span>My Profile</span>
+      </a>
+      <a href="#" class="nav-item" data-section="support">
+        <span class="nav-icon">&#128222;</span>
+        <span>Contact Support</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="user-badge">
+        <span class="user-avatar">&#128100;</span>
+        <span id="userEmail" class="user-email-text">Customer</span>
+      </div>
+      <button class="btn-logout" id="logoutBtn">&#x2715; Logout</button>
+    </div>
+  </aside>
+
+  <!-- Mobile top bar -->
+  <header class="mobile-header">
+    <button class="menu-toggle" id="menuToggle">&#9776;</button>
+    <img src="assets/images/logo.png" alt="Sage Energies" class="mobile-logo-img" />
+    <div></div>
+  </header>
+
+  <!-- Tap-outside overlay (mobile) -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- ============================================================
+       MAIN CONTENT
+  ============================================================ -->
+  <main class="main-content">
+
+    <!-- ======================================================
+         SECTION 1 – PLACE ORDER
+    ====================================================== -->
+    <section id="section-place-order" class="section active">
+
+      <div class="section-header">
+        <div>
+          <h2>Place a Fuel Order</h2>
+          <p class="section-subtitle">Select a fuel product below, then complete the order form</p>
+        </div>
+      </div>
+
+      <!-- Live fuel product cards -->
+      <div class="fuel-products-section">
+        <h3>Available Fuel Products <span style="font-size:0.8rem;font-weight:400;color:var(--text-muted);">&#8212; click a card to select</span></h3>
+        <div id="fuelProductsGrid" class="fuel-products-grid">
+          <p style="color:var(--text-muted);padding:8px 0;">Loading products&hellip;</p>
+        </div>
+      </div>
+
+      <!-- Low-stock warning banner (shown by JS when any product is low) -->
+      <div id="stockWarningBanner" class="stock-warning-banner" style="display:none;">
+        &#9888;&#65039; Some products are running low on stock. Place your order early to avoid delays.
+      </div>
+
+      <div class="card" style="max-width:700px;">
+        <div class="card-title">Order Details</div>
+        <div style="padding:24px;">
+
+          <form id="orderForm">
+
+            <div class="form-group">
+              <label>Order Number</label>
+              <input type="text" id="orderNumber" readonly class="input-readonly" />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Fuel Type *</label>
+                <select id="fuelType" required onchange="onFuelTypeChange()">
+                  <option value="">-- Select Fuel Type --</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Unit of Measure</label>
+                <select id="fuelUnit">
+                  <option value="Litres">Litres</option>
+                  <option value="Kg">Kilograms (Kg)</option>
+                  <option value="Gallons">Gallons</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Price per Unit</label>
+                <input type="text" id="pricePerUnit" readonly
+                       class="input-readonly input-price-readonly"
+                       placeholder="Select a fuel type above" />
+              </div>
+              <div class="form-group">
+                <label>Quantity *</label>
+                <input type="number" id="orderQty" min="1"
+                       placeholder="e.g. 100" required
+                       oninput="calculateTotal()" />
+              </div>
+            </div>
+
+            <!-- Estimated total (hidden until qty + price are set) -->
+            <div id="estimatedTotalBox" class="estimated-total-box" style="display:none;">
+              <span class="estimated-total-label">&#128181; Estimated Total</span>
+              <span class="estimated-total-amount" id="estimatedTotalAmount">&#8358;0.00</span>
+            </div>
+
+            <div class="form-group">
+              <label>Phone Number *</label>
+              <input type="tel" id="orderPhone"
+                     placeholder="+234 xxx xxxx xxx" required />
+            </div>
+
+            <div class="form-group">
+              <label>Delivery Address *</label>
+              <input type="text" id="deliveryAddress"
+                     placeholder="Street, City, State" required />
+            </div>
+
+            <div class="form-group">
+              <label>Additional Notes</label>
+              <textarea id="orderNotes" rows="3"
+                placeholder="Preferred delivery time, special instructions, etc."></textarea>
+            </div>
+
+            <div id="orderError" class="error-msg" style="display:none;"></div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-primary" id="submitOrderBtn">
+                &#128722; Submit Order
+              </button>
+              <button type="button" class="btn-secondary" onclick="resetOrderForm()">
+                Clear Form
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ======================================================
+         SECTION 2 – MY ORDERS
+    ====================================================== -->
+    <section id="section-my-orders" class="section">
+
+      <div class="section-header">
+        <div>
+          <h2>My Orders</h2>
+          <p class="section-subtitle">Track all your fuel order requests</p>
+        </div>
+        <button class="btn-primary" onclick="showCustomerSection('place-order')">+ New Order</button>
+      </div>
+
+      <!-- Order summary cards -->
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-icon">&#128230;</div>
+          <div class="stat-info">
+            <p>Total Orders</p>
+            <h2 id="myTotalOrders">0</h2>
+          </div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon">&#8987;</div>
+          <div class="stat-info">
+            <p>Pending</p>
+            <h2 id="myPendingOrders">0</h2>
+          </div>
+        </div>
+        <div class="stat-card blue" style="background:linear-gradient(135deg,#0277bd,#29b6f6);">
+          <div class="stat-icon">&#10003;</div>
+          <div class="stat-info">
+            <p>Approved</p>
+            <h2 id="myApprovedOrders">0</h2>
+          </div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">&#128666;</div>
+          <div class="stat-info">
+            <p>Delivered</p>
+            <h2 id="myDeliveredOrders">0</h2>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Order #</th>
+                <th>Fuel Type</th>
+                <th>Quantity</th>
+                <th>Phone</th>
+                <th>Delivery Address</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="myOrdersTable">
+              <tr><td colspan="7" class="empty-row">Loading your orders&hellip;</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ======================================================
+         SECTION 3 – MY INVOICES
+    ====================================================== -->
+    <section id="section-my-invoices" class="section">
+
+      <div class="section-header">
+        <div>
+          <h2>My Invoices</h2>
+          <p class="section-subtitle">View your order invoices and payment status</p>
+        </div>
+        <button class="btn-primary" onclick="showCustomerSection('place-order')">+ New Order</button>
+      </div>
+
+      <!-- Invoice summary cards -->
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-icon">&#128196;</div>
+          <div class="stat-info">
+            <p>Total Invoices</p>
+            <h2 id="myInvTotal">0</h2>
+          </div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon">&#8987;</div>
+          <div class="stat-info">
+            <p>Awaiting Payment</p>
+            <h2 id="myInvAwaiting">0</h2>
+          </div>
+        </div>
+        <div class="stat-card blue" style="background:linear-gradient(135deg,#0277bd,#29b6f6);">
+          <div class="stat-icon">&#128179;</div>
+          <div class="stat-info">
+            <p>Receipt Submitted</p>
+            <h2 id="myInvSubmitted">0</h2>
+          </div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">&#10003;</div>
+          <div class="stat-info">
+            <p>Payment Confirmed</p>
+            <h2 id="myInvPaid">0</h2>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Fuel Type</th>
+                <th>Qty</th>
+                <th>Total Amount</th>
+                <th>Date</th>
+                <th>Payment Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="myInvoicesTable">
+              <tr><td colspan="7" class="empty-row">Loading your invoices&hellip;</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ======================================================
+         SECTION 4 – MY PROFILE
+    ====================================================== -->
+    <section id="section-profile" class="section">
+
+      <div class="section-header">
+        <div>
+          <h2>My Profile</h2>
+          <p class="section-subtitle">Manage your account details</p>
+        </div>
+      </div>
+
+      <div class="card" style="max-width:520px;">
+        <div class="card-title">Account Information</div>
+        <div style="padding:24px;">
+          <form id="profileForm">
+
+            <div class="form-group">
+              <label for="profileName">Full Name</label>
+              <input type="text" id="profileName" placeholder="Your full name" required />
+            </div>
+
+            <div class="form-group">
+              <label for="profileEmail">Email Address</label>
+              <input type="email" id="profileEmail" readonly class="input-readonly" />
+            </div>
+
+            <div class="form-group">
+              <label for="profilePhone">Phone Number</label>
+              <input type="tel" id="profilePhone" placeholder="+234 xxx xxxx xxx" />
+            </div>
+
+            <div class="form-group">
+              <label for="profileAddress">Default Delivery Address</label>
+              <input type="text" id="profileAddress"
+                     placeholder="Street, City, State" />
+            </div>
+
+            <div id="profileMessage"
+                 style="display:none; padding:10px 14px; border-radius:8px;
+                        font-size:0.875rem; margin-bottom:12px;"></div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-primary" id="saveProfileBtn">
+                Save Changes
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ======================================================
+         SECTION 4 – CONTACT SUPPORT
+    ====================================================== -->
+    <section id="section-support" class="section">
+
+      <div class="section-header">
+        <div>
+          <h2>Contact Support</h2>
+          <p class="section-subtitle">We&rsquo;re here to help you</p>
+        </div>
+      </div>
+
+      <div class="support-grid">
+
+        <!-- Contact details card -->
+        <div class="card support-card">
+          <div class="support-brand">
+            <img src="assets/images/logo.png" alt="Sage Energies" class="support-logo-img" />
+            <h3>Sage Energy and Natural Resources Ltd</h3>
+            <p>Your trusted fuel supply partner</p>
+          </div>
+
+          <div class="support-details">
+            <div class="support-item">
+              <span class="support-item-icon">&#128222;</span>
+              <div>
+                <span class="support-item-label">Phone</span>
+                <a href="tel:+2348154114232" class="support-item-value">+234 8154114232</a>
+              </div>
+            </div>
+            <div class="support-item">
+              <span class="support-item-icon">&#9993;</span>
+              <div>
+                <span class="support-item-label">Email</span>
+                <a href="mailto:support@sageenergy.com" class="support-item-value">support@sageenergy.com</a>
+              </div>
+            </div>
+            <div class="support-item">
+              <span class="support-item-icon">&#128205;</span>
+              <div>
+                <span class="support-item-label">Address</span>
+                <span class="support-item-value">Benin City, Edo State, Nigeria</span>
+              </div>
+            </div>
+            <div class="support-item">
+              <span class="support-item-icon">&#128336;</span>
+              <div>
+                <span class="support-item-label">Business Hours</span>
+                <span class="support-item-value">Monday &ndash; Saturday: 8:00 AM &ndash; 6:00 PM</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="support-actions">
+            <a href="https://wa.me/2348154114232"
+               target="_blank" rel="noopener noreferrer"
+               class="btn-whatsapp">
+              &#128172; Chat on WhatsApp
+            </a>
+            <a href="mailto:support@sageenergy.com" class="btn-primary support-email-btn">
+              &#9993; Send Email
+            </a>
+          </div>
+        </div>
+
+        <!-- Info card -->
+        <div class="card support-info-card">
+          <div style="padding:28px;">
+            <h3 class="support-info-title">How can we help?</h3>
+
+            <div class="support-faq">
+              <div class="support-faq-item">
+                <span class="faq-icon">&#128666;</span>
+                <div>
+                  <strong>Order &amp; Delivery</strong>
+                  <p>Questions about your fuel order, delivery timing, or tracking your shipment.</p>
+                </div>
+              </div>
+              <div class="support-faq-item">
+                <span class="faq-icon">&#128336;</span>
+                <div>
+                  <strong>Order Status</strong>
+                  <p>Need an update on a pending or approved order? Message us on WhatsApp.</p>
+                </div>
+              </div>
+              <div class="support-faq-item">
+                <span class="faq-icon">&#128722;</span>
+                <div>
+                  <strong>Product &amp; Pricing</strong>
+                  <p>Fuel type availability, current pricing, and minimum order quantities.</p>
+                </div>
+              </div>
+              <div class="support-faq-item">
+                <span class="faq-icon">&#128100;</span>
+                <div>
+                  <strong>Account Help</strong>
+                  <p>Login issues, password reset, or changes to your delivery address.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end support-grid -->
+
+    </section>
+
+    <!-- Site-wide footer -->
+    <footer class="site-footer">
+      <p>&copy; 2026 Sage Energy and Natural Resources Ltd. All rights reserved.</p>
+    </footer>
+
+  </main><!-- end main-content -->
+
+  <!-- Customer Invoice Modal -->
+  <div class="modal-backdrop" id="customerInvoiceModal">
+    <div class="modal-box modal-invoice">
+      <div class="modal-head">
+        <h3>&#128196; Invoice</h3>
+        <button class="modal-close-btn" onclick="closeInvoiceModal()">&#10005;</button>
+      </div>
+      <div id="invoiceModalContent">
+        <!-- filled by JS -->
+      </div>
+      <div class="modal-actions" style="display:flex;gap:10px;flex-wrap:wrap;padding:16px 28px 20px;">
+        <button class="btn-primary"   onclick="downloadInvoicePDF()">&#128197; Download PDF</button>
+        <button class="btn-secondary" onclick="closeInvoiceModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+  <script src="customer-app.js"></script>
+</body>
+</html>

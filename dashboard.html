@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sage Energy – Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="assets/images/logo.png" type="image/png" />
+  <!-- jsPDF: used for PDF invoice downloads -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body class="dashboard-page">
+
+  <!-- ============================================================
+       SIDEBAR NAVIGATION
+  ============================================================ -->
+  <aside class="sidebar" id="sidebar">
+
+    <div class="sidebar-logo">
+      <img src="assets/images/logo.png" alt="Sage Energies" class="sidebar-logo-img" />
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-section="dashboard">
+        <span class="nav-icon">&#128202;</span>
+        <span>Dashboard</span>
+      </a>
+      <a href="#" class="nav-item" data-section="create-invoice">
+        <span class="nav-icon">&#128221;</span>
+        <span>Create Invoice</span>
+      </a>
+      <a href="#" class="nav-item" data-section="invoices">
+        <span class="nav-icon">&#128203;</span>
+        <span>All Invoices</span>
+      </a>
+      <a href="#" class="nav-item" data-section="inventory">
+        <span class="nav-icon">&#128722;</span>
+        <span>Inventory</span>
+      </a>
+      <a href="#" class="nav-item" data-section="reports">
+        <span class="nav-icon">&#128200;</span>
+        <span>Reports</span>
+      </a>
+      <a href="#" class="nav-item" data-section="orders">
+        <span class="nav-icon">&#128230;</span>
+        <span>Customer Orders</span>
+      </a>
+      <a href="#" class="nav-item" data-section="payments">
+        <span class="nav-icon">&#128179;</span>
+        <span>Customer Payments</span>
+      </a>
+      <a href="#" class="nav-item" data-section="support">
+        <span class="nav-icon">&#128222;</span>
+        <span>Contact Support</span>
+      </a>
+    </nav>
+
+    <!-- Logged-in user info + logout -->
+    <div class="sidebar-bottom">
+      <div class="user-badge">
+        <span class="user-avatar">&#128100;</span>
+        <span id="userEmail" class="user-email-text">Admin</span>
+      </div>
+      <button class="btn-logout" id="logoutBtn">&#x2715; Logout</button>
+    </div>
+  </aside>
+
+  <!-- Mobile top bar (only visible on small screens) -->
+  <header class="mobile-header">
+    <button class="menu-toggle" id="menuToggle">&#9776;</button>
+    <img src="assets/images/logo.png" alt="Sage Energies" class="mobile-logo-img" />
+    <div></div>
+  </header>
+
+  <!-- Tap-outside overlay to close mobile sidebar -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- ============================================================
+       MAIN CONTENT AREA
+  ============================================================ -->
+  <main class="main-content">
+
+    <!-- ======================================================
+         SECTION 1 – DASHBOARD OVERVIEW
+    ====================================================== -->
+    <section id="section-dashboard" class="section active">
+
+      <div class="section-header">
+        <div>
+          <h2>Dashboard Overview</h2>
+          <p id="currentDate" class="section-subtitle"></p>
+        </div>
+        <button class="btn-primary" onclick="showSection('create-invoice')">+ New Invoice</button>
+      </div>
+
+      <!-- Stats cards -->
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-icon">&#128181;</div>
+          <div class="stat-info">
+            <p>Total Revenue</p>
+            <h2 id="totalRevenue">&#8358;0.00</h2>
+          </div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">&#128203;</div>
+          <div class="stat-info">
+            <p>Total Invoices</p>
+            <h2 id="totalInvoices">0</h2>
+          </div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon">&#128313;</div>
+          <div class="stat-info">
+            <p>Total Products</p>
+            <h2 id="totalProducts">0</h2>
+          </div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon">&#9888;</div>
+          <div class="stat-info">
+            <p>Low Stock Items</p>
+            <h2 id="lowStockCount">0</h2>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent invoices table -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Recent Invoices</h3>
+          <input
+            type="text"
+            id="dashboardSearch"
+            class="card-search-input"
+            placeholder="&#128269; Search name, phone or invoice #…"
+            oninput="filterDashboardInvoices()"
+          />
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>Products</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="recentInvoicesTable">
+              <tr><td colspan="7" class="empty-row">Loading invoices…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         SECTION 2 – CREATE INVOICE
+    ====================================================== -->
+    <section id="section-create-invoice" class="section">
+
+      <div class="section-header">
+        <div>
+          <h2>Create Invoice</h2>
+          <p class="section-subtitle">Fill in the form to generate and save a new invoice</p>
+        </div>
+      </div>
+
+      <div class="invoice-layout">
+
+        <!-- Left: Invoice form -->
+        <div class="card invoice-form-card">
+          <h3 class="card-title">Invoice Details</h3>
+
+          <form id="invoiceForm">
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Invoice Number</label>
+                <input type="text" id="invoiceNumber" readonly class="input-readonly" />
+              </div>
+              <div class="form-group">
+                <label>Date *</label>
+                <input type="date" id="invoiceDate" required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Customer Name *</label>
+              <input type="text" id="customerName" placeholder="e.g. Bello Enterprises" required />
+            </div>
+
+            <div class="form-group">
+              <label>Customer Address</label>
+              <input type="text" id="customerAddress" placeholder="Street, City (optional)" />
+            </div>
+
+            <div class="form-group">
+              <label>Customer Phone</label>
+              <input type="text" id="customerPhone" placeholder="+234 xxx xxxx xxx (optional)" />
+            </div>
+
+            <div class="section-divider"></div>
+            <h4 class="sub-heading">Products / Services</h4>
+
+            <!-- Dynamic invoice item rows -->
+            <div id="invoiceItems">
+              <!-- First row is hardcoded; more are added by addInvoiceItem() -->
+              <div class="invoice-item" id="item-0">
+                <div class="form-row item-row">
+                  <div class="form-group fg-product">
+                    <label>Product *</label>
+                    <select class="item-product" onchange="updateItemPrice(this, 0)" required>
+                      <option value="">-- Select Product --</option>
+                    </select>
+                  </div>
+                  <div class="form-group fg-num">
+                    <label>Qty *</label>
+                    <input type="number" class="item-qty" min="1" value="1" oninput="calculateItemTotal(0)" required />
+                  </div>
+                  <div class="form-group fg-num">
+                    <label>Price (&#8358;) *</label>
+                    <input type="number" class="item-price" min="0" step="0.01" oninput="calculateItemTotal(0)" required />
+                  </div>
+                  <div class="form-group fg-num">
+                    <label>Total (&#8358;)</label>
+                    <input type="number" class="item-total" readonly class="input-readonly" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button type="button" class="btn-add-item" onclick="addInvoiceItem()">+ Add Another Item</button>
+
+            <div class="section-divider"></div>
+
+            <div class="form-group">
+              <label>Notes / Description</label>
+              <textarea id="invoiceNotes" rows="3" placeholder="Payment terms, delivery info, etc."></textarea>
+            </div>
+
+            <!-- Running totals -->
+            <div class="totals-box">
+              <div class="totals-row">
+                <span>Subtotal</span>
+                <span id="subtotalDisplay">&#8358;0.00</span>
+              </div>
+              <div class="totals-row grand">
+                <span>TOTAL AMOUNT</span>
+                <span id="grandTotalDisplay">&#8358;0.00</span>
+              </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="form-actions">
+              <button type="submit" class="btn-primary" id="saveInvoiceBtn">&#128190; Save Invoice</button>
+              <button type="button" class="btn-secondary" onclick="printCurrentInvoice()">&#128424; Print</button>
+              <button type="button" class="btn-secondary" onclick="downloadCurrentPDF()">&#128196; Download PDF</button>
+            </div>
+
+          </form>
+        </div>
+
+        <!-- Right: Live invoice preview -->
+        <div class="card invoice-preview-card" id="invoicePreviewCard">
+          <h3 class="card-title">Live Preview</h3>
+          <div id="invoicePreview">
+            <div class="preview-header">
+              <div class="company-block">
+                <img src="assets/images/logo.png" alt="Sage Energies" class="invoice-logo-img" />
+                <p>and Natural Resources Ltd</p>
+                <p>info@sageenergy.com</p>
+                <p>+234 000 000 0000</p>
+              </div>
+              <div class="invoice-meta-block">
+                <h3 class="inv-label">INVOICE</h3>
+                <p>No: <strong id="previewInvNum">–</strong></p>
+                <p>Date: <strong id="previewDate">–</strong></p>
+              </div>
+            </div>
+
+            <div class="preview-bill-to">
+              <p class="bill-label">Bill To:</p>
+              <p id="previewCustomer">–</p>
+              <p id="previewAddress" class="preview-small"></p>
+              <p id="previewPhone" class="preview-small"></p>
+            </div>
+
+            <table class="preview-table">
+              <thead>
+                <tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+              </thead>
+              <tbody id="previewItems"></tbody>
+            </table>
+
+            <div class="preview-totals">
+              <div class="preview-total-row">
+                <span>Subtotal:</span><span id="previewSubtotal">&#8358;0.00</span>
+              </div>
+              <div class="preview-total-row preview-grand">
+                <span>TOTAL:</span><span id="previewTotal">&#8358;0.00</span>
+              </div>
+            </div>
+
+            <p id="previewNotes" class="preview-notes-text"></p>
+
+            <div class="preview-footer-text">
+              <p>Thank you for your business!</p>
+              <p>Sage Energy and Natural Resources Ltd</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         SECTION 3 – ALL INVOICES
+    ====================================================== -->
+    <section id="section-invoices" class="section">
+
+      <div class="section-header">
+        <div>
+          <h2>All Invoices</h2>
+          <p class="section-subtitle">View, search and manage every invoice</p>
+        </div>
+        <button class="btn-primary" onclick="showSection('create-invoice')">+ New Invoice</button>
+      </div>
+
+      <div class="card">
+        <!-- Search / filter bar -->
+        <div class="filter-bar">
+          <input type="text" id="invoiceSearch" placeholder="&#128269; Search by name, phone or invoice #…" oninput="filterInvoices()" />
+          <input type="month" id="invoiceMonthFilter" onchange="filterInvoices()" />
+          <button class="btn-secondary btn-sm-text" onclick="clearInvoiceFilter()">Clear</button>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>Products</th>
+                <th>Total Amount</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="allInvoicesTable">
+              <tr><td colspan="7" class="empty-row">Loading invoices…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         SECTION 4 – INVENTORY MANAGEMENT
+    ====================================================== -->
+    <section id="section-inventory" class="section">
+
+      <div class="section-header">
+        <div>
+          <h2>Inventory Management</h2>
+          <p class="section-subtitle">Track fuel products and stock levels</p>
+        </div>
+        <button class="btn-primary" onclick="openProductModal()">+ Add Product</button>
+      </div>
+
+      <!-- Low stock alert banner -->
+      <div id="lowStockAlert" class="alert-warning" style="display:none;">
+        &#9888; <strong>Low Stock Alert!</strong> One or more products are below their minimum threshold.
+      </div>
+
+      <div class="card">
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Price / Unit</th>
+                <th>Stock Qty</th>
+                <th>Unit</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productsTable">
+              <tr><td colspan="7" class="empty-row">Loading products…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         SECTION 5 – REPORTS
+    ====================================================== -->
+    <section id="section-reports" class="section">
+
+      <div class="section-header">
+        <div>
+          <h2>Sales Reports</h2>
+          <p class="section-subtitle">Analyse your business performance</p>
+        </div>
+      </div>
+
+      <!-- Date filters -->
+      <div class="filter-bar filter-bar-reports">
+        <div class="form-group">
+          <label>Filter by Date</label>
+          <input type="date" id="reportDate" onchange="loadReports()" />
+        </div>
+        <div class="form-group">
+          <label>Filter by Month</label>
+          <input type="month" id="reportMonth" onchange="loadReports()" />
+        </div>
+        <button class="btn-secondary align-self-end" onclick="clearReportFilters()">Clear Filters</button>
+      </div>
+
+      <!-- Report stat cards -->
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-icon">&#128197;</div>
+          <div class="stat-info">
+            <p>Daily Sales</p>
+            <h2 id="dailySales">&#8358;0.00</h2>
+          </div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">&#128198;</div>
+          <div class="stat-info">
+            <p>Monthly Sales</p>
+            <h2 id="monthlySales">&#8358;0.00</h2>
+          </div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon">&#128142;</div>
+          <div class="stat-info">
+            <p>All-Time Revenue</p>
+            <h2 id="reportTotalRevenue">&#8358;0.00</h2>
+          </div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-icon">&#128203;</div>
+          <div class="stat-info">
+            <p>Invoices (Period)</p>
+            <h2 id="reportInvoiceCount">0</h2>
+          </div>
+        </div>
+      </div>
+
+      <!-- Revenue by product -->
+      <div class="card">
+        <h3 class="card-title">Revenue by Product (Selected Period)</h3>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr><th>Product</th><th>Units Sold</th><th>Revenue</th></tr>
+            </thead>
+            <tbody id="productRevenueTable">
+              <tr><td colspan="3" class="empty-row">No data available</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Invoice history list -->
+      <div class="card">
+        <h3 class="card-title">Invoice History (Selected Period)</h3>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr><th>Invoice #</th><th>Customer</th><th>Amount</th><th>Date</th></tr>
+            </thead>
+            <tbody id="reportInvoiceTable">
+              <tr><td colspan="4" class="empty-row">No data available</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         SECTION 6 – CUSTOMER ORDERS (Admin view)
+    ====================================================== -->
+    <section id="section-orders" class="section">
+
+      <div class="section-header">
+        <div>
+          <h2>Customer Orders</h2>
+          <p class="section-subtitle">View, approve and manage all customer fuel orders</p>
+        </div>
+      </div>
+
+      <!-- Order summary cards -->
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-icon">&#128230;</div>
+          <div class="stat-info">
+            <p>Total Orders</p>
+            <h2 id="orderTotalCount">0</h2>
+          </div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon">&#8987;</div>
+          <div class="stat-info">
+            <p>Pending</p>
+            <h2 id="orderPendingCount">0</h2>
+          </div>
+        </div>
+        <div class="stat-card blue" style="background:linear-gradient(135deg,#0277bd,#29b6f6);">
+          <div class="stat-icon">&#10003;</div>
+          <div class="stat-info">
+            <p>Approved</p>
+            <h2 id="orderApprovedCount">0</h2>
+          </div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">&#128666;</div>
+          <div class="stat-info">
+            <p>Delivered</p>
+            <h2 id="orderDeliveredCount">0</h2>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <!-- Search and filter bar -->
+        <div class="filter-bar">
+          <input type="text" id="orderSearch"
+                 placeholder="&#128269; Search by customer, phone or order #&hellip;"
+                 oninput="filterOrders()" />
+          <select id="orderStatusFilter" onchange="filterOrders()"
+                  style="padding:9px 12px; border:1.5px solid var(--border);
+                         border-radius:8px; font-size:0.875rem; font-family:inherit;
+                         color:var(--text-main); background:#fff;">
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Delivered">Delivered</option>
+          </select>
+          <button class="btn-secondary btn-sm-text" onclick="clearOrderFilter()">Clear</button>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Order #</th>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>Fuel Type</th>
+                <th>Quantity</th>
+                <th>Delivery Address</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="allOrdersTable">
+              <tr><td colspan="9" class="empty-row">Loading orders&hellip;</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ======================================================
+         SECTION 7 – CUSTOMER PAYMENTS
+    ====================================================== -->
+    <section id="section-payments" class="section">
+
+      <div class="section-header">
+        <div>
+          <h2>Customer Payments</h2>
+          <p class="section-subtitle">Track customer invoices and confirm payments</p>
+        </div>
+      </div>
+
+      <!-- Payment summary cards -->
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-icon">&#128196;</div>
+          <div class="stat-info">
+            <p>Total Payments</p>
+            <h2 id="pmtTotalCount">0</h2>
+          </div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon">&#8987;</div>
+          <div class="stat-info">
+            <p>Pending Review</p>
+            <h2 id="pmtAwaitingCount">0</h2>
+          </div>
+        </div>
+        <div class="stat-card blue" style="background:linear-gradient(135deg,#0277bd,#29b6f6);">
+          <div class="stat-icon">&#128179;</div>
+          <div class="stat-info">
+            <p>Submitted</p>
+            <h2 id="pmtSubmittedCount">0</h2>
+          </div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">&#10003;</div>
+          <div class="stat-info">
+            <p>Confirmed</p>
+            <h2 id="pmtPaidCount">0</h2>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <!-- Search and filter bar -->
+        <div class="filter-bar">
+          <input type="text" id="invoicePaySearch"
+                 placeholder="&#128269; Search by invoice #, customer, sender or reference&hellip;"
+                 oninput="filterCustomerInvoices()" />
+          <select id="invoicePayStatusFilter" onchange="filterCustomerInvoices()"
+                  style="padding:9px 12px; border:1.5px solid var(--border);
+                         border-radius:8px; font-size:0.875rem; font-family:inherit;
+                         color:var(--text-main); background:#fff;">
+            <option value="">All Statuses</option>
+            <option value="submitted">Submitted</option>
+            <option value="confirmed">Confirmed</option>
+          </select>
+          <button class="btn-secondary btn-sm-text" onclick="clearInvoicePayFilter()">Clear</button>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Customer</th>
+                <th>Sender / Bank</th>
+                <th>Amount Paid</th>
+                <th>Transaction Ref</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="customerInvoicesTable">
+              <tr><td colspan="8" class="empty-row">Loading customer invoices&hellip;</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ======================================================
+         SECTION 8 – CONTACT SUPPORT
+    ====================================================== -->
+    <section id="section-support" class="section">
+
+      <div class="section-header">
+        <div>
+          <h2>Contact Support</h2>
+          <p class="section-subtitle">Get in touch with the Sage Energy team</p>
+        </div>
+      </div>
+
+      <div class="support-grid">
+
+        <!-- Contact details card -->
+        <div class="card support-card">
+          <div class="support-brand">
+            <img src="assets/images/logo.png" alt="Sage Energies" class="support-logo-img" />
+            <h3>Sage Energy and Natural Resources Ltd</h3>
+            <p>Your trusted fuel supply partner</p>
+          </div>
+
+          <div class="support-details">
+            <div class="support-item">
+              <span class="support-item-icon">&#128222;</span>
+              <div>
+                <span class="support-item-label">Phone</span>
+                <a href="tel:+2348154114232" class="support-item-value">+234 8154114232</a>
+              </div>
+            </div>
+            <div class="support-item">
+              <span class="support-item-icon">&#9993;</span>
+              <div>
+                <span class="support-item-label">Email</span>
+                <a href="mailto:support@sageenergy.com" class="support-item-value">support@sageenergy.com</a>
+              </div>
+            </div>
+            <div class="support-item">
+              <span class="support-item-icon">&#128205;</span>
+              <div>
+                <span class="support-item-label">Address</span>
+                <span class="support-item-value">Benin City, Edo State, Nigeria</span>
+              </div>
+            </div>
+            <div class="support-item">
+              <span class="support-item-icon">&#128336;</span>
+              <div>
+                <span class="support-item-label">Business Hours</span>
+                <span class="support-item-value">Monday &ndash; Saturday: 8:00 AM &ndash; 6:00 PM</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="support-actions">
+            <a href="https://wa.me/2348154114232"
+               target="_blank" rel="noopener noreferrer"
+               class="btn-whatsapp">
+              &#128172; Chat on WhatsApp
+            </a>
+            <a href="mailto:support@sageenergy.com" class="btn-primary support-email-btn">
+              &#9993; Send Email
+            </a>
+          </div>
+        </div>
+
+        <!-- Info card -->
+        <div class="card support-info-card">
+          <div style="padding:28px;">
+            <h3 class="support-info-title">How can we help?</h3>
+
+            <div class="support-faq">
+              <div class="support-faq-item">
+                <span class="faq-icon">&#128666;</span>
+                <div>
+                  <strong>Order &amp; Delivery</strong>
+                  <p>Questions about your fuel order, delivery timing, or tracking your shipment.</p>
+                </div>
+              </div>
+              <div class="support-faq-item">
+                <span class="faq-icon">&#128203;</span>
+                <div>
+                  <strong>Invoices &amp; Billing</strong>
+                  <p>Queries about invoices, payment records, or billing issues.</p>
+                </div>
+              </div>
+              <div class="support-faq-item">
+                <span class="faq-icon">&#128722;</span>
+                <div>
+                  <strong>Product &amp; Pricing</strong>
+                  <p>Fuel type availability, current pricing, and stock information.</p>
+                </div>
+              </div>
+              <div class="support-faq-item">
+                <span class="faq-icon">&#128100;</span>
+                <div>
+                  <strong>Account Help</strong>
+                  <p>Login issues, account setup, password reset, or profile changes.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end support-grid -->
+
+    </section>
+
+    <!-- Site-wide footer -->
+    <footer class="site-footer">
+      <p>&copy; 2026 Sage Energy and Natural Resources Ltd. All rights reserved.</p>
+    </footer>
+
+  </main><!-- end main-content -->
+
+
+  <!-- ============================================================
+       MODAL: ADD / EDIT PRODUCT
+  ============================================================ -->
+  <div class="modal-backdrop" id="productModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="modalTitle">Add Product</h3>
+        <button class="modal-close-btn" onclick="closeProductModal()">&#10005;</button>
+      </div>
+      <form id="productForm">
+        <div class="form-group">
+          <label>Product Name *</label>
+          <input type="text" id="productName" placeholder="e.g. Diesel, Petrol, LPG Gas" required />
+        </div>
+        <div class="form-group">
+          <label>Category *</label>
+          <select id="productCategory" required>
+            <option value="Diesel">Diesel</option>
+            <option value="Petrol">Petrol (PMS)</option>
+            <option value="Gas">Gas (LPG)</option>
+            <option value="Kerosene">Kerosene (DPK)</option>
+            <option value="Lubricant">Lubricant</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Price per Unit (&#8358;) *</label>
+            <input type="number" id="productPrice" min="0" step="0.01" placeholder="0.00" required />
+          </div>
+          <div class="form-group">
+            <label>Stock Quantity *</label>
+            <input type="number" id="productQuantity" min="0" placeholder="0" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Unit of Measure</label>
+            <select id="productUnit">
+              <option value="Litres">Litres</option>
+              <option value="Kg">Kilograms (Kg)</option>
+              <option value="Tonnes">Tonnes</option>
+              <option value="Gallons">Gallons</option>
+              <option value="Units">Units</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Low Stock Threshold</label>
+            <input type="number" id="productLowStock" min="0" placeholder="100" value="100" />
+          </div>
+        </div>
+        <!-- Hidden field to store ID when editing -->
+        <input type="hidden" id="editProductId" />
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" id="saveProductBtn">Save Product</button>
+          <button type="button" class="btn-secondary" onclick="closeProductModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: VIEW INVOICE
+  ============================================================ -->
+  <div class="modal-backdrop" id="invoiceViewModal">
+    <div class="modal-box modal-large">
+      <div class="modal-head">
+        <h3>Invoice Details</h3>
+        <button class="modal-close-btn" onclick="closeInvoiceModal()">&#10005;</button>
+      </div>
+      <!-- Invoice content is injected here by viewInvoice() -->
+      <div id="invoiceViewContent"></div>
+      <div class="form-actions modal-actions">
+        <button class="btn-primary"    onclick="printViewedInvoice()">&#128424; Print</button>
+        <button class="btn-secondary"  onclick="downloadViewedPDF()">&#128196; PDF</button>
+        <button class="btn-danger"     onclick="deleteInvoiceFromView()">&#128465; Delete</button>
+        <button class="btn-secondary"  onclick="closeInvoiceModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase CDN -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

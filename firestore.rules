@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Customers ─────────────────────────────────────────────
+    // A customer can only read and write their own profile document.
+    match /customers/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Orders ────────────────────────────────────────────────
+    // Any signed-in user can read all orders.
+    //   - Admins need this to see every customer's orders.
+    //   - Customers will filter to their own orders in the app.
+    // A customer can create an order only when the userId field
+    //   matches their own uid (prevents creating orders for others).
+    // Any signed-in user can update or delete (admin approves/delivers/deletes).
+    match /orders/{orderId} {
+      allow read:             if request.auth != null;
+      allow create:           if request.auth != null
+                                 && request.resource.data.userId == request.auth.uid;
+      allow update, delete:   if request.auth != null;
+    }
+
+    // ── Invoices ──────────────────────────────────────────────
+    match /invoices/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ── Products / Inventory ──────────────────────────────────
+    match /products/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ── Payments ──────────────────────────────────────────────
+    // Customers create payment records; admin reads and confirms them.
+    match /payments/{docId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

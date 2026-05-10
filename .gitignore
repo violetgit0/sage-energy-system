@@ -1,0 +1,47 @@
+# ── Firebase ──────────────────────────────────────────────────
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# ── Environment / secrets ────────────────────────────────────
+.env
+.env.*
+
+# ── Node ─────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+*.tgz
+
+# ── macOS system files ───────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# ── Editor / IDE ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Logs / runtime ───────────────────────────────────────────
+logs/
+*.log
+*.pid
+*.seed
+*.pid.lock
+lib-cov
+coverage
+.nyc_output
+.grunt
+bower_components
+build/Release
+.eslintcache
+.node_repl_history
+.dataconnect
