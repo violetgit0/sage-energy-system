@@ -217,43 +217,34 @@ document.getElementById('orderForm').addEventListener('submit', async function (
   };
 
   try {
-    // Pre-generate the order doc ID so we can use it inside the transaction
-    var orderRef = db.collection('orders').doc();
+    // 1. Save the order
+    var docRef = await db.collection('orders').add(orderData);
 
-    // Transaction: re-verify stock server-side, deduct atomically, save order
-    await db.runTransaction(async function (transaction) {
-      if (orderedProduct && orderedProduct.id) {
-        var productRef  = db.collection('products').doc(orderedProduct.id);
-        var productSnap = await transaction.get(productRef);
-        if (productSnap.exists) {
-          var currentStock = Number(productSnap.data().quantity) || 0;
-          if (qty > currentStock) {
-            throw new Error(
-              currentStock <= 0
-                ? fuelType + ' is currently out of stock.'
-                : 'Only ' + currentStock + ' ' + (productSnap.data().unit || 'units') + ' of ' + fuelType + ' available.'
-            );
-          }
-          transaction.update(productRef, {
-            quantity:  firebase.firestore.FieldValue.increment(-qty),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          });
-        }
+    // 2. Deduct ordered quantity from inventory stock
+    //    orderedProduct was resolved above from allFuelProducts (real-time cache)
+    if (orderedProduct && orderedProduct.id) {
+      try {
+        await db.collection('products').doc(orderedProduct.id).update({
+          quantity:  firebase.firestore.FieldValue.increment(-Number(qty)),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (stockErr) {
+        console.error('[Inventory] Stock deduction failed:', stockErr.code, stockErr.message);
+        // Order is already saved — admin can manually correct stock if needed
       }
-      transaction.set(orderRef, orderData);
-    });
+    } else {
+      console.warn('[Inventory] Product not found in cache for fuelType:', fuelType);
+    }
 
+    // 3. Generate and save the invoice
     var invNumber = generateInvoiceNumber();
-    await createOrderInvoice(orderRef.id, orderData, invNumber);
+    await createOrderInvoice(docRef.id, orderData, invNumber);
     showToast('Order submitted! Invoice ' + invNumber + ' generated — check My Invoices.', 'success');
     resetOrderForm();
     showCustomerSection('my-invoices');
   } catch (err) {
     console.error('[Order] Save failed:', err.code, err.message);
-    // Custom stock errors have no err.code; Firestore errors do
-    errorDiv.textContent   = err.code
-      ? 'Failed to submit order: ' + (err.message || 'unknown error') + '. Please try again.'
-      : err.message;
+    errorDiv.textContent   = 'Failed to submit order: ' + (err.message || 'unknown error') + '. Please try again.';
     errorDiv.style.display = 'block';
   } finally {
     btn.textContent = '&#128722; Submit Order';
