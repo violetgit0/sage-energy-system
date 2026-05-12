@@ -5,10 +5,10 @@
     "ignore": [
       "firebase.json",
       "firestore.rules",
+      "README.md",
       "**/.*",
       "**/node_modules/**"
-    ],
-    "rewrites": []
+    ]
   },
   "firestore": {
     "rules": "firestore.rules"
