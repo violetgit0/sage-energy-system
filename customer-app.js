@@ -171,6 +171,19 @@ document.getElementById('orderForm').addEventListener('submit', async function (
     return;
   }
 
+  // Fast pre-check from local cache before touching Firestore
+  var orderedProduct = allFuelProducts.find(function (p) { return p.name === fuelType; });
+  if (orderedProduct) {
+    var cachedStock = Number(orderedProduct.quantity) || 0;
+    if (qty > cachedStock) {
+      errorDiv.textContent = cachedStock <= 0
+        ? fuelType + ' is currently out of stock.'
+        : 'Insufficient stock. Only ' + cachedStock + ' ' + (orderedProduct.unit || 'units') + ' of ' + fuelType + ' available.';
+      errorDiv.style.display = 'block';
+      return;
+    }
+  }
+
   errorDiv.style.display = 'none';
 
   var btn = document.getElementById('submitOrderBtn');
@@ -188,9 +201,9 @@ document.getElementById('orderForm').addEventListener('submit', async function (
 
   var orderData = {
     orderNumber:   orderNumber,
-    userId:        currentCustomer.uid,    // field name: userId
-    customerEmail: currentCustomer.email,  // field name: customerEmail
-    customerName:  currentCustomer.name,   // field name: customerName
+    userId:        currentCustomer.uid,
+    customerEmail: currentCustomer.email,
+    customerName:  currentCustomer.name,
     fuelType:      fuelType,
     quantity:      qty,
     fuelUnit:      fuelUnit,
@@ -203,20 +216,44 @@ document.getElementById('orderForm').addEventListener('submit', async function (
     createdAt:     firebase.firestore.FieldValue.serverTimestamp(),
   };
 
-  console.log('[Order] Saving order to Firestore:', orderData);
-
   try {
-    var docRef    = await db.collection('orders').add(orderData);
-    console.log('[Order] Saved successfully, doc id:', docRef.id);
+    // Pre-generate the order doc ID so we can use it inside the transaction
+    var orderRef = db.collection('orders').doc();
+
+    // Transaction: re-verify stock server-side, deduct atomically, save order
+    await db.runTransaction(async function (transaction) {
+      if (orderedProduct && orderedProduct.id) {
+        var productRef  = db.collection('products').doc(orderedProduct.id);
+        var productSnap = await transaction.get(productRef);
+        if (productSnap.exists) {
+          var currentStock = Number(productSnap.data().quantity) || 0;
+          if (qty > currentStock) {
+            throw new Error(
+              currentStock <= 0
+                ? fuelType + ' is currently out of stock.'
+                : 'Only ' + currentStock + ' ' + (productSnap.data().unit || 'units') + ' of ' + fuelType + ' available.'
+            );
+          }
+          transaction.update(productRef, {
+            quantity:  firebase.firestore.FieldValue.increment(-qty),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      }
+      transaction.set(orderRef, orderData);
+    });
+
     var invNumber = generateInvoiceNumber();
-    await createOrderInvoice(docRef.id, orderData, invNumber);
-    console.log('[Invoice] Auto-created:', invNumber);
+    await createOrderInvoice(orderRef.id, orderData, invNumber);
     showToast('Order submitted! Invoice ' + invNumber + ' generated — check My Invoices.', 'success');
     resetOrderForm();
     showCustomerSection('my-invoices');
   } catch (err) {
     console.error('[Order] Save failed:', err.code, err.message);
-    errorDiv.textContent   = 'Failed to submit order: ' + (err.message || 'unknown error') + '. Please try again.';
+    // Custom stock errors have no err.code; Firestore errors do
+    errorDiv.textContent   = err.code
+      ? 'Failed to submit order: ' + (err.message || 'unknown error') + '. Please try again.'
+      : err.message;
     errorDiv.style.display = 'block';
   } finally {
     btn.textContent = '&#128722; Submit Order';
@@ -549,10 +586,41 @@ function calculateTotal() {
   var totalAmt = document.getElementById('estimatedTotalAmount');
 
   if (qty > 0 && rawPrice > 0) {
-    totalAmt.textContent       = '₦' + fmt(qty * rawPrice);
-    totalBox.style.display     = 'flex';
+    totalAmt.textContent   = '₦' + fmt(qty * rawPrice);
+    totalBox.style.display = 'flex';
   } else {
     totalBox.style.display = 'none';
+  }
+
+  checkQtyStock();
+}
+
+function checkQtyStock() {
+  var fuelType = document.getElementById('fuelType').value;
+  var qty      = parseFloat(document.getElementById('orderQty').value) || 0;
+  var errorDiv = document.getElementById('orderError');
+
+  if (!fuelType || qty <= 0) {
+    if (errorDiv.dataset.stockWarn === '1') {
+      errorDiv.style.display     = 'none';
+      errorDiv.dataset.stockWarn = '0';
+    }
+    return;
+  }
+
+  var product   = allFuelProducts.find(function (p) { return p.name === fuelType; });
+  if (!product) return;
+
+  var available = Number(product.quantity) || 0;
+  if (qty > available) {
+    errorDiv.textContent = available <= 0
+      ? fuelType + ' is currently out of stock.'
+      : 'Only ' + available + ' ' + (product.unit || 'units') + ' of ' + fuelType + ' available.';
+    errorDiv.style.display     = 'block';
+    errorDiv.dataset.stockWarn = '1';
+  } else if (errorDiv.dataset.stockWarn === '1') {
+    errorDiv.style.display     = 'none';
+    errorDiv.dataset.stockWarn = '0';
   }
 }
 
