@@ -7,6 +7,7 @@
       "firestore.rules",
       "README.md",
       "**/.*",
+      "**/.*/**",
       "**/node_modules/**"
     ]
   },
