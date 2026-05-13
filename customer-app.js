@@ -220,20 +220,27 @@ document.getElementById('orderForm').addEventListener('submit', async function (
     // 1. Save the order
     var docRef = await db.collection('orders').add(orderData);
 
-    // 2. Deduct ordered quantity from inventory stock
-    //    orderedProduct was resolved above from allFuelProducts (real-time cache)
-    if (orderedProduct && orderedProduct.id) {
-      try {
-        await db.collection('products').doc(orderedProduct.id).update({
-          quantity:  firebase.firestore.FieldValue.increment(-Number(qty)),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch (stockErr) {
-        console.error('[Inventory] Stock deduction failed:', stockErr.code, stockErr.message);
-        // Order is already saved — admin can manually correct stock if needed
-      }
+    // 2. Deduct ordered quantity from inventory stock.
+    //    Query Firestore directly by product name so we always use the
+    //    authoritative server value — no reliance on local cache IDs.
+    var productQuery = await db.collection('products')
+      .where('name', '==', fuelType)
+      .limit(1)
+      .get();
+
+    if (!productQuery.empty) {
+      var productDoc   = productQuery.docs[0];
+      var currentStock = Number(productDoc.data().quantity) || 0;
+      var newStock     = Math.max(0, currentStock - Number(qty));
+
+      await db.collection('products').doc(productDoc.id).update({
+        quantity:  newStock,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+
+      console.log('[Inventory]', fuelType, 'stock:', currentStock, '->', newStock);
     } else {
-      console.warn('[Inventory] Product not found in cache for fuelType:', fuelType);
+      console.warn('[Inventory] No product found in Firestore with name:', fuelType);
     }
 
     // 3. Generate and save the invoice
