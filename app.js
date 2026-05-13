@@ -894,9 +894,9 @@ function updateInventoryStats() {
   var revEl  = document.getElementById('invTotalRevenue');
   var costEl = document.getElementById('invTotalCost');
   var proEl  = document.getElementById('invTotalProfit');
-  if (revEl)  revEl.textContent  = fmt(totalRevenue);
-  if (costEl) costEl.textContent = fmt(totalCost);
-  if (proEl)  proEl.textContent  = fmt(totalProfit);
+  if (revEl)  revEl.textContent  = fmtCard(totalRevenue);
+  if (costEl) costEl.textContent = fmtCard(totalCost);
+  if (proEl)  proEl.textContent  = fmtCard(totalProfit);
 }
 
 function checkLowStock() {
@@ -1015,8 +1015,8 @@ function updateDashboardStats() {
     return p.quantity <= (p.lowStockThreshold || 0);
   }).length;
 
-  document.getElementById('totalRevenue').textContent  = fmt(totalRevenue);
-  document.getElementById('totalProfit').textContent   = fmt(totalProfit);
+  document.getElementById('totalRevenue').textContent  = fmtCard(totalRevenue);
+  document.getElementById('totalProfit').textContent   = fmtCard(totalProfit);
   document.getElementById('totalOrders').textContent   = allOrders.length;
   document.getElementById('totalProducts').textContent = allProducts.length;
   document.getElementById('lowStockCount').textContent = lowStockCount;
@@ -1040,9 +1040,9 @@ function loadReports() {
     : allInvoices;
 
   // Stat cards
-  document.getElementById('dailySales').textContent    = fmt(dayInvs.reduce((s, i) => s + (i.totalAmount || 0), 0));
-  document.getElementById('monthlySales').textContent  = fmt(monthInvs.reduce((s, i) => s + (i.totalAmount || 0), 0));
-  document.getElementById('reportTotalRevenue').textContent = fmt(allInvoices.reduce((s, i) => s + (i.totalAmount || 0), 0));
+  document.getElementById('dailySales').textContent    = fmtCard(dayInvs.reduce((s, i) => s + (i.totalAmount || 0), 0));
+  document.getElementById('monthlySales').textContent  = fmtCard(monthInvs.reduce((s, i) => s + (i.totalAmount || 0), 0));
+  document.getElementById('reportTotalRevenue').textContent = fmtCard(allInvoices.reduce((s, i) => s + (i.totalAmount || 0), 0));
   document.getElementById('reportInvoiceCount').textContent = monthInvs.length;
 
   // Revenue by product (from the month-filtered set)
@@ -1116,9 +1116,9 @@ function updateSalesStats() {
   var revEl  = document.getElementById('salesTotalRevenue');
   var costEl = document.getElementById('salesTotalCost');
   var proEl  = document.getElementById('salesTotalProfit');
-  if (revEl)  revEl.textContent  = fmt(totalRevenue);
-  if (costEl) costEl.textContent = fmt(totalCost);
-  if (proEl)  proEl.textContent  = fmt(totalProfit);
+  if (revEl)  revEl.textContent  = fmtCard(totalRevenue);
+  if (costEl) costEl.textContent = fmtCard(totalCost);
+  if (proEl)  proEl.textContent  = fmtCard(totalProfit);
 }
 
 function renderSalesTable(list) {
@@ -1184,11 +1184,23 @@ function clearSalesFilter() {
 // UTILITY FUNCTIONS
 // ============================================================
 
-// Format a number as Nigerian Naira
+// Format a number as Nigerian Naira (full precision — for tables and invoices)
 function fmt(amount) {
   return '₦' + parseFloat(amount || 0).toLocaleString('en-NG', {
     minimumFractionDigits: 2, maximumFractionDigits: 2,
   });
+}
+
+// Abbreviated format for stat cards — keeps text short so it fits inside the card.
+// e.g. ₦111,600,000 → ₦111.6M   |   ₦29,700 → ₦29.7K   |   ₦850 → ₦850.00
+function fmtCard(amount) {
+  var n   = parseFloat(amount) || 0;
+  var abs = Math.abs(n);
+  var sign = n < 0 ? '-' : '';
+  if (abs >= 1e9) return sign + '₦' + (abs / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
+  if (abs >= 1e6) return sign + '₦' + (abs / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (abs >= 1e3) return sign + '₦' + (abs / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+  return sign + '₦' + abs.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // Format for PDF (jsPDF has issues with the ₦ symbol in some fonts, use N instead)
