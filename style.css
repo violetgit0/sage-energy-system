@@ -359,8 +359,9 @@ a { text-decoration: none; color: inherit; }
 .stat-card.purple { background: linear-gradient(135deg, #4a148c, #8e24aa); }
 
 .stat-icon { font-size: 2.2rem; opacity: 0.90; flex-shrink: 0; }
+.stat-info { min-width: 0; flex: 1; }
 .stat-info p { font-size: 0.82rem; opacity: 0.88; font-weight: 500; margin-bottom: 4px; }
-.stat-info h2 { font-size: 1.55rem; font-weight: 800; }
+.stat-info h2 { font-size: 1.4rem; font-weight: 800; word-break: break-word; line-height: 1.2; }
 
 /* ============================================================
    CARDS
