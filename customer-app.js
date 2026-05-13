@@ -222,46 +222,31 @@ document.getElementById('orderForm').addEventListener('submit', async function (
     console.log('[Order] Saved. ID:', docRef.id, '| fuelType:', fuelType, '| qty:', qty);
 
     // ── 2. Deduct stock from inventory ────────────────────────────
-    // Uses the document ID already held in allFuelProducts (populated
-    // by onSnapshot — proven to work because products show in the UI).
-    // A direct doc().get() + doc().update() is used instead of a
-    // where() query because collection queries can return stale/empty
-    // results on first call in the compat SDK.
     try {
       var cachedProd = allFuelProducts.find(function (p) { return p.name === fuelType; });
-
-      console.log('[Inventory] Cache lookup:',
-        cachedProd
-          ? 'FOUND id=' + cachedProd.id + ' qty=' + cachedProd.quantity
-          : 'NOT FOUND',
-        '| cache size:', allFuelProducts.length,
-        '| searched name:', JSON.stringify(fuelType));
+      var ordered    = Number(qty);
 
       if (cachedProd && cachedProd.id) {
-        // Fresh read from Firestore so we have the authoritative qty
-        var liveDoc  = await db.collection('products').doc(cachedProd.id).get();
-        var liveQty  = Number(liveDoc.data().quantity);
-        var ordered  = Number(qty);
-        var newStock = Math.max(0, liveQty - ordered);
-
-        console.log('[Inventory] Live qty from Firestore:', liveQty,
-                    '| ordered:', ordered, '| new stock:', newStock);
+        var beforeQty    = Number(cachedProd.quantity) || 0;
+        var expectedLeft = Math.max(0, beforeQty - ordered);
 
         await db.collection('products').doc(cachedProd.id).update({
-          quantity:  newStock,
+          quantity:  firebase.firestore.FieldValue.increment(-ordered),
           updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
 
-        console.log('[Inventory] ✓ quantity written to Firestore:', newStock,
-                    '| doc id:', cachedProd.id);
-        showToast('Stock updated: ' + fuelType + ' ' + liveQty + ' → ' + newStock + ' ' + (cachedProd.unit || 'units'), 'info');
-      } else {
-        console.warn('[Inventory] Product not in cache. Names available:',
-          allFuelProducts.map(function (p) { return JSON.stringify(p.name); }).join(', '));
+        showToast(
+          'Inventory updated: ' + fuelType + ' ' + beforeQty +
+          ' → ' + expectedLeft + ' ' + (cachedProd.unit || 'units'),
+          'info'
+        );
       }
     } catch (stockErr) {
-      console.error('[Inventory] ✗ Stock update failed:', stockErr.code, stockErr.message);
-      showToast('Warning: stock count could not be updated (' + (stockErr.code || stockErr.message) + ')', 'error');
+      console.error('[Inventory] Stock update failed:', stockErr.code, stockErr.message);
+      showToast(
+        'Warning: stock could not be updated (' + (stockErr.code || stockErr.message) + ')',
+        'error'
+      );
     }
 
     // ── 3. Create invoice ─────────────────────────────────────────
