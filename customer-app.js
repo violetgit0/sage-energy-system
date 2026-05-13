@@ -199,6 +199,11 @@ document.getElementById('orderForm').addEventListener('submit', async function (
     return;
   }
 
+  // Look up buying price from the cached product list so the order record
+  // is self-contained for profit calculations even if prices change later.
+  var orderedProdForPrice = allFuelProducts.find(function (p) { return p.name === fuelType; });
+  var buyingPrice = orderedProdForPrice ? (Number(orderedProdForPrice.buyingPrice) || 0) : 0;
+
   var orderData = {
     orderNumber:   orderNumber,
     userId:        currentCustomer.uid,
@@ -211,6 +216,7 @@ document.getElementById('orderForm').addEventListener('submit', async function (
     address:       address,
     notes:         notes,
     pricePerUnit:  pricePerUnit || null,
+    buyingPrice:   buyingPrice,
     totalAmount:   totalAmount,
     status:        'Pending',
     createdAt:     firebase.firestore.FieldValue.serverTimestamp(),

@@ -45,6 +45,10 @@
         <span class="nav-icon">&#128200;</span>
         <span>Reports</span>
       </a>
+      <a href="#" class="nav-item" data-section="sales-analytics">
+        <span class="nav-icon">&#128176;</span>
+        <span>Sales &amp; Profit</span>
+      </a>
       <a href="#" class="nav-item" data-section="orders">
         <span class="nav-icon">&#128230;</span>
         <span>Customer Orders</span>
@@ -107,10 +111,17 @@
           </div>
         </div>
         <div class="stat-card green">
-          <div class="stat-icon">&#128203;</div>
+          <div class="stat-icon">&#128200;</div>
           <div class="stat-info">
-            <p>Total Invoices</p>
-            <h2 id="totalInvoices">0</h2>
+            <p>Total Profit</p>
+            <h2 id="totalProfit">&#8358;0.00</h2>
+          </div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-icon">&#128230;</div>
+          <div class="stat-info">
+            <p>Total Orders</p>
+            <h2 id="totalOrders">0</h2>
           </div>
         </div>
         <div class="stat-card orange">
@@ -388,7 +399,8 @@
               <tr>
                 <th>Product Name</th>
                 <th>Category</th>
-                <th>Price / Unit</th>
+                <th>Buying Price</th>
+                <th>Selling Price</th>
                 <th>Stock Qty</th>
                 <th>Unit</th>
                 <th>Status</th>
@@ -396,7 +408,7 @@
               </tr>
             </thead>
             <tbody id="productsTable">
-              <tr><td colspan="7" class="empty-row">Loading products…</td></tr>
+              <tr><td colspan="8" class="empty-row">Loading products…</td></tr>
             </tbody>
           </table>
         </div>
@@ -771,6 +783,84 @@
 
     </section>
 
+    <!-- ======================================================
+         SECTION 9 – SALES & PROFIT ANALYTICS
+    ====================================================== -->
+    <section id="section-sales-analytics" class="section">
+
+      <div class="section-header">
+        <div>
+          <h2>Sales &amp; Profit Analytics</h2>
+          <p class="section-subtitle">Revenue, cost and profit from every customer order</p>
+        </div>
+      </div>
+
+      <!-- Summary stat cards -->
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-icon">&#128181;</div>
+          <div class="stat-info">
+            <p>Total Revenue</p>
+            <h2 id="salesTotalRevenue">&#8358;0.00</h2>
+          </div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon">&#128176;</div>
+          <div class="stat-info">
+            <p>Total Cost</p>
+            <h2 id="salesTotalCost">&#8358;0.00</h2>
+          </div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">&#128200;</div>
+          <div class="stat-info">
+            <p>Total Profit</p>
+            <h2 id="salesTotalProfit">&#8358;0.00</h2>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="card">
+        <div class="filter-bar">
+          <input type="text" id="salesSearch"
+                 placeholder="&#128269; Search customer or fuel type&hellip;"
+                 oninput="filterSalesTable()" />
+          <select id="salesStatusFilter" onchange="filterSalesTable()"
+                  style="padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;
+                         font-size:0.875rem;font-family:inherit;color:var(--text-main);background:#fff;">
+            <option value="">All Orders</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Delivered">Delivered</option>
+          </select>
+          <button class="btn-secondary btn-sm-text" onclick="clearSalesFilter()">Clear</button>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Fuel Type</th>
+                <th>Quantity</th>
+                <th>Buying Price</th>
+                <th>Selling Price</th>
+                <th>Revenue</th>
+                <th>Profit</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="salesTable">
+              <tr><td colspan="9" class="empty-row">Loading sales data&hellip;</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
     <!-- Site-wide footer -->
     <footer class="site-footer">
       <p>&copy; 2026 Sage Energy and Natural Resources Ltd. All rights reserved.</p>
@@ -806,15 +896,19 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Price per Unit (&#8358;) *</label>
+            <label>Buying Price / Unit (&#8358;) *</label>
+            <input type="number" id="productBuyingPrice" min="0" step="0.01" placeholder="0.00" required />
+          </div>
+          <div class="form-group">
+            <label>Selling Price / Unit (&#8358;) *</label>
             <input type="number" id="productPrice" min="0" step="0.01" placeholder="0.00" required />
           </div>
+        </div>
+        <div class="form-row">
           <div class="form-group">
             <label>Stock Quantity *</label>
             <input type="number" id="productQuantity" min="0" placeholder="0" required />
           </div>
-        </div>
-        <div class="form-row">
           <div class="form-group">
             <label>Unit of Measure</label>
             <select id="productUnit">
@@ -825,6 +919,8 @@
               <option value="Units">Units</option>
             </select>
           </div>
+        </div>
+        <div class="form-row">
           <div class="form-group">
             <label>Low Stock Threshold</label>
             <input type="number" id="productLowStock" min="0" placeholder="100" value="100" />
@@ -864,7 +960,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="firebase.js?v=7"></script>
-  <script src="app.js?v=7"></script>
+  <script src="firebase.js?v=8"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

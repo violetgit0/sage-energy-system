@@ -88,8 +88,9 @@ function showSection(name) {
   if (section) section.classList.add('active');
   if (navLink) navLink.classList.add('active');
 
-  // Reload report data whenever the reports tab is opened
-  if (name === 'reports') loadReports();
+  // Reload report/analytics data when switching to those tabs
+  if (name === 'reports')          loadReports();
+  if (name === 'sales-analytics')  loadSalesAnalytics();
 
   closeMobileSidebar();
 }
@@ -819,7 +820,7 @@ function renderProducts() {
   const tbody = document.getElementById('productsTable');
 
   if (allProducts.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-row">No products yet — click "+ Add Product" to get started.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-row">No products yet — click "+ Add Product" to get started.</td></tr>';
     return;
   }
 
@@ -829,6 +830,7 @@ function renderProducts() {
       <tr class="${low ? 'low-stock-row' : ''}">
         <td><strong>${escHtml(p.name)}</strong></td>
         <td>${p.category || '–'}</td>
+        <td class="amount">${fmt(p.buyingPrice || 0)} / ${p.unit}</td>
         <td class="amount">${fmt(p.price)} / ${p.unit}</td>
         <td><strong>${p.quantity}</strong></td>
         <td>${p.unit}</td>
@@ -896,6 +898,7 @@ function editProduct(id) {
   document.getElementById('editProductId').value = id;
   document.getElementById('productName').value         = p.name;
   document.getElementById('productCategory').value     = p.category;
+  document.getElementById('productBuyingPrice').value  = p.buyingPrice || 0;
   document.getElementById('productPrice').value        = p.price;
   document.getElementById('productQuantity').value     = p.quantity;
   document.getElementById('productUnit').value         = p.unit;
@@ -916,6 +919,7 @@ document.getElementById('productForm').addEventListener('submit', async function
   const data = {
     name:              document.getElementById('productName').value.trim(),
     category:          document.getElementById('productCategory').value,
+    buyingPrice:       parseFloat(document.getElementById('productBuyingPrice').value) || 0,
     price:             parseFloat(document.getElementById('productPrice').value),
     quantity:          parseFloat(document.getElementById('productQuantity').value),
     unit:              document.getElementById('productUnit').value,
@@ -961,11 +965,25 @@ async function deleteProduct(id, name) {
 // DASHBOARD STATS
 // ============================================================
 function updateDashboardStats() {
-  const totalRevenue  = allInvoices.reduce((s, inv) => s + (inv.totalAmount || 0), 0);
-  const lowStockCount = allProducts.filter(p => p.quantity <= (p.lowStockThreshold || 0)).length;
+  var totalRevenue = 0;
+  var totalCost    = 0;
+
+  allOrders.forEach(function (order) {
+    var rev      = Number(order.totalAmount) || 0;
+    var buyPrice = Number(order.buyingPrice) || 0;
+    var qty      = Number(order.quantity)    || 0;
+    totalRevenue += rev;
+    totalCost    += buyPrice * qty;
+  });
+
+  var totalProfit   = totalRevenue - totalCost;
+  var lowStockCount = allProducts.filter(function (p) {
+    return p.quantity <= (p.lowStockThreshold || 0);
+  }).length;
 
   document.getElementById('totalRevenue').textContent  = fmt(totalRevenue);
-  document.getElementById('totalInvoices').textContent = allInvoices.length;
+  document.getElementById('totalProfit').textContent   = fmt(totalProfit);
+  document.getElementById('totalOrders').textContent   = allOrders.length;
   document.getElementById('totalProducts').textContent = allProducts.length;
   document.getElementById('lowStockCount').textContent = lowStockCount;
 }
@@ -1039,6 +1057,96 @@ function clearReportFilters() {
 }
 
 // ============================================================
+// SALES & PROFIT ANALYTICS
+// ============================================================
+
+function loadSalesAnalytics() {
+  renderSalesTable();
+  updateSalesStats();
+}
+
+function updateSalesStats() {
+  var totalRevenue = 0;
+  var totalCost    = 0;
+
+  allOrders.forEach(function (order) {
+    var rev      = Number(order.totalAmount) || 0;
+    var buyPrice = Number(order.buyingPrice) || 0;
+    var qty      = Number(order.quantity)    || 0;
+    totalRevenue += rev;
+    totalCost    += buyPrice * qty;
+  });
+
+  var totalProfit = totalRevenue - totalCost;
+
+  var revEl  = document.getElementById('salesTotalRevenue');
+  var costEl = document.getElementById('salesTotalCost');
+  var proEl  = document.getElementById('salesTotalProfit');
+  if (revEl)  revEl.textContent  = fmt(totalRevenue);
+  if (costEl) costEl.textContent = fmt(totalCost);
+  if (proEl)  proEl.textContent  = fmt(totalProfit);
+}
+
+function renderSalesTable(list) {
+  var tbody = document.getElementById('salesTable');
+  if (!tbody) return;
+
+  var data = list !== undefined ? list : allOrders;
+
+  if (data.length === 0) {
+    var search = (document.getElementById('salesSearch') || {}).value || '';
+    var msg = search.trim() ? 'No matching orders found.' : 'No customer orders yet.';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-row">' + msg + '</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(function (order) {
+    var date      = order.createdAt ? order.createdAt.toDate().toLocaleDateString('en-NG') : '–';
+    var qty       = Number(order.quantity)    || 0;
+    var sellPrice = Number(order.pricePerUnit)|| 0;
+    var buyPrice  = Number(order.buyingPrice) || 0;
+    var revenue   = Number(order.totalAmount) || (qty * sellPrice);
+    var cost      = buyPrice * qty;
+    var profit    = revenue - cost;
+    var profitColor = profit >= 0 ? 'var(--success,#1a7a4a)' : 'var(--danger,#d32f2f)';
+
+    return '<tr>' +
+      '<td>' + escHtml(order.customerName || '–') + '</td>' +
+      '<td>' + escHtml(order.fuelType || '–') + '</td>' +
+      '<td>' + qty + ' ' + escHtml(order.fuelUnit || '') + '</td>' +
+      '<td class="amount">' + fmt(buyPrice) + '</td>' +
+      '<td class="amount">' + fmt(sellPrice) + '</td>' +
+      '<td class="amount">' + fmt(revenue) + '</td>' +
+      '<td class="amount" style="font-weight:600;color:' + profitColor + ';">' + fmt(profit) + '</td>' +
+      '<td>' + orderStatusBadge(order.status) + '</td>' +
+      '<td>' + date + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function filterSalesTable() {
+  var search = (document.getElementById('salesSearch').value || '').toLowerCase().trim();
+  var status = document.getElementById('salesStatusFilter').value;
+
+  var filtered = allOrders.filter(function (order) {
+    var matchText = !search ||
+      (order.customerName || '').toLowerCase().includes(search) ||
+      (order.fuelType     || '').toLowerCase().includes(search) ||
+      (order.orderNumber  || '').toLowerCase().includes(search);
+    var matchStatus = !status || order.status === status;
+    return matchText && matchStatus;
+  });
+
+  renderSalesTable(filtered);
+}
+
+function clearSalesFilter() {
+  document.getElementById('salesSearch').value       = '';
+  document.getElementById('salesStatusFilter').value = '';
+  renderSalesTable();
+}
+
+// ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
 
@@ -1086,6 +1194,9 @@ function loadOrders() {
       });
       renderOrders();
       updateOrderStats();
+      updateDashboardStats();
+      renderSalesTable();
+      updateSalesStats();
     }, function (err) {
       console.error('Orders listener error:', err);
     });
