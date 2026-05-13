@@ -254,12 +254,14 @@ document.getElementById('orderForm').addEventListener('submit', async function (
 
         console.log('[Inventory] ✓ quantity written to Firestore:', newStock,
                     '| doc id:', cachedProd.id);
+        showToast('Stock updated: ' + fuelType + ' ' + liveQty + ' → ' + newStock + ' ' + (cachedProd.unit || 'units'), 'info');
       } else {
         console.warn('[Inventory] Product not in cache. Names available:',
           allFuelProducts.map(function (p) { return JSON.stringify(p.name); }).join(', '));
       }
     } catch (stockErr) {
       console.error('[Inventory] ✗ Stock update failed:', stockErr.code, stockErr.message);
+      showToast('Warning: stock count could not be updated (' + (stockErr.code || stockErr.message) + ')', 'error');
     }
 
     // ── 3. Create invoice ─────────────────────────────────────────
