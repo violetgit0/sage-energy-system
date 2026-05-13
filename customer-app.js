@@ -217,40 +217,59 @@ document.getElementById('orderForm').addEventListener('submit', async function (
   };
 
   try {
-    // 1. Save the order
+    // ── 1. Save the order ─────────────────────────────────────────
     var docRef = await db.collection('orders').add(orderData);
+    console.log('[Order] Saved. ID:', docRef.id, '| fuelType:', fuelType, '| qty:', qty);
 
-    // 2. Deduct ordered quantity from inventory stock.
-    //    Query Firestore directly by product name so we always use the
-    //    authoritative server value — no reliance on local cache IDs.
-    var productQuery = await db.collection('products')
-      .where('name', '==', fuelType)
-      .limit(1)
-      .get();
+    // ── 2. Deduct stock from inventory ────────────────────────────
+    // Uses the document ID already held in allFuelProducts (populated
+    // by onSnapshot — proven to work because products show in the UI).
+    // A direct doc().get() + doc().update() is used instead of a
+    // where() query because collection queries can return stale/empty
+    // results on first call in the compat SDK.
+    try {
+      var cachedProd = allFuelProducts.find(function (p) { return p.name === fuelType; });
 
-    if (!productQuery.empty) {
-      var productDoc   = productQuery.docs[0];
-      var currentStock = Number(productDoc.data().quantity) || 0;
-      var newStock     = Math.max(0, currentStock - Number(qty));
+      console.log('[Inventory] Cache lookup:',
+        cachedProd
+          ? 'FOUND id=' + cachedProd.id + ' qty=' + cachedProd.quantity
+          : 'NOT FOUND',
+        '| cache size:', allFuelProducts.length,
+        '| searched name:', JSON.stringify(fuelType));
 
-      await db.collection('products').doc(productDoc.id).update({
-        quantity:  newStock,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      });
+      if (cachedProd && cachedProd.id) {
+        // Fresh read from Firestore so we have the authoritative qty
+        var liveDoc  = await db.collection('products').doc(cachedProd.id).get();
+        var liveQty  = Number(liveDoc.data().quantity);
+        var ordered  = Number(qty);
+        var newStock = Math.max(0, liveQty - ordered);
 
-      console.log('[Inventory]', fuelType, 'stock:', currentStock, '->', newStock);
-    } else {
-      console.warn('[Inventory] No product found in Firestore with name:', fuelType);
+        console.log('[Inventory] Live qty from Firestore:', liveQty,
+                    '| ordered:', ordered, '| new stock:', newStock);
+
+        await db.collection('products').doc(cachedProd.id).update({
+          quantity:  newStock,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+
+        console.log('[Inventory] ✓ quantity written to Firestore:', newStock,
+                    '| doc id:', cachedProd.id);
+      } else {
+        console.warn('[Inventory] Product not in cache. Names available:',
+          allFuelProducts.map(function (p) { return JSON.stringify(p.name); }).join(', '));
+      }
+    } catch (stockErr) {
+      console.error('[Inventory] ✗ Stock update failed:', stockErr.code, stockErr.message);
     }
 
-    // 3. Generate and save the invoice
+    // ── 3. Create invoice ─────────────────────────────────────────
     var invNumber = generateInvoiceNumber();
     await createOrderInvoice(docRef.id, orderData, invNumber);
     showToast('Order submitted! Invoice ' + invNumber + ' generated — check My Invoices.', 'success');
     resetOrderForm();
     showCustomerSection('my-invoices');
   } catch (err) {
-    console.error('[Order] Save failed:', err.code, err.message);
+    console.error('[Order] FAILED:', err.code, err.message);
     errorDiv.textContent   = 'Failed to submit order: ' + (err.message || 'unknown error') + '. Please try again.';
     errorDiv.style.display = 'block';
   } finally {
