@@ -811,6 +811,7 @@ function loadProducts() {
       refreshAllProductDropdowns();
       checkLowStock();
       updateDashboardStats();
+      updateInventoryStats();
     }, function (err) {
       console.error('Products listener error:', err);
     });
@@ -820,20 +821,31 @@ function renderProducts() {
   const tbody = document.getElementById('productsTable');
 
   if (allProducts.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-row">No products yet — click "+ Add Product" to get started.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="empty-row">No products yet — click "+ Add Product" to get started.</td></tr>';
     return;
   }
 
   tbody.innerHTML = allProducts.map(p => {
-    const low = p.quantity <= (p.lowStockThreshold || 0);
+    const low      = p.quantity <= (p.lowStockThreshold || 0);
+    const qty      = Number(p.quantity)    || 0;
+    const sellPrc  = Number(p.price)       || 0;
+    const buyPrc   = Number(p.buyingPrice) || 0;
+    const revVal   = qty * sellPrc;
+    const costVal  = qty * buyPrc;
+    const profVal  = revVal - costVal;
+    const profColor = profVal >= 0 ? '#1a7a4a' : '#d32f2f';
+
     return `
       <tr class="${low ? 'low-stock-row' : ''}">
         <td><strong>${escHtml(p.name)}</strong></td>
         <td>${p.category || '–'}</td>
-        <td class="amount">${fmt(p.buyingPrice || 0)} / ${p.unit}</td>
-        <td class="amount">${fmt(p.price)} / ${p.unit}</td>
-        <td><strong>${p.quantity}</strong></td>
+        <td class="amount">${fmt(buyPrc)} / ${p.unit}</td>
+        <td class="amount">${fmt(sellPrc)} / ${p.unit}</td>
+        <td><strong>${qty}</strong></td>
         <td>${p.unit}</td>
+        <td class="amount">${fmt(revVal)}</td>
+        <td class="amount">${fmt(costVal)}</td>
+        <td class="amount" style="font-weight:600;color:${profColor};">${fmt(profVal)}</td>
         <td>
           <span class="badge ${low ? 'badge-danger' : 'badge-success'}">
             ${low ? '&#9888; Low Stock' : '&#10003; In Stock'}
@@ -863,6 +875,28 @@ function refreshAllProductDropdowns() {
     sel.innerHTML = '<option value="">-- Select Product --</option>' + opts;
     if (cur) sel.value = cur;
   });
+}
+
+function updateInventoryStats() {
+  var totalRevenue = 0;
+  var totalCost    = 0;
+
+  allProducts.forEach(function (p) {
+    var qty     = Number(p.quantity)    || 0;
+    var sellPrc = Number(p.price)       || 0;
+    var buyPrc  = Number(p.buyingPrice) || 0;
+    totalRevenue += qty * sellPrc;
+    totalCost    += qty * buyPrc;
+  });
+
+  var totalProfit = totalRevenue - totalCost;
+
+  var revEl  = document.getElementById('invTotalRevenue');
+  var costEl = document.getElementById('invTotalCost');
+  var proEl  = document.getElementById('invTotalProfit');
+  if (revEl)  revEl.textContent  = fmt(totalRevenue);
+  if (costEl) costEl.textContent = fmt(totalCost);
+  if (proEl)  proEl.textContent  = fmt(totalProfit);
 }
 
 function checkLowStock() {

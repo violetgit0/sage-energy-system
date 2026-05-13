@@ -382,9 +382,34 @@
       <div class="section-header">
         <div>
           <h2>Inventory Management</h2>
-          <p class="section-subtitle">Track fuel products and stock levels</p>
+          <p class="section-subtitle">Track fuel products, stock levels and financial value</p>
         </div>
         <button class="btn-primary" onclick="openProductModal()">+ Add Product</button>
+      </div>
+
+      <!-- Inventory financial summary cards -->
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-icon">&#128181;</div>
+          <div class="stat-info">
+            <p>Total Inventory Revenue</p>
+            <h2 id="invTotalRevenue">&#8358;0.00</h2>
+          </div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon">&#128176;</div>
+          <div class="stat-info">
+            <p>Total Inventory Cost</p>
+            <h2 id="invTotalCost">&#8358;0.00</h2>
+          </div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">&#128200;</div>
+          <div class="stat-info">
+            <p>Expected Total Profit</p>
+            <h2 id="invTotalProfit">&#8358;0.00</h2>
+          </div>
+        </div>
       </div>
 
       <!-- Low stock alert banner -->
@@ -399,16 +424,19 @@
               <tr>
                 <th>Product Name</th>
                 <th>Category</th>
-                <th>Buying Price</th>
-                <th>Selling Price</th>
+                <th>Buying Price / Unit</th>
+                <th>Selling Price / Unit</th>
                 <th>Stock Qty</th>
                 <th>Unit</th>
+                <th>Revenue Value</th>
+                <th>Cost Value</th>
+                <th>Profit Value</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody id="productsTable">
-              <tr><td colspan="8" class="empty-row">Loading products…</td></tr>
+              <tr><td colspan="11" class="empty-row">Loading products…</td></tr>
             </tbody>
           </table>
         </div>
@@ -960,7 +988,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="firebase.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <script src="firebase.js?v=9"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
